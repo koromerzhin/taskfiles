@@ -1,0 +1,5 @@
+# Taskfiles Collection
+
+# Dependencies
+node_modules/
+.env

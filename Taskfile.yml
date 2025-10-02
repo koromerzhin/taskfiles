@@ -1,0 +1,38 @@
+version: '3'
+
+# Taskfile principal - Tâches globales et inclusions
+# Charge automatiquement les variables depuis le fichier .env s'il existe
+dotenv: [ '.env' ]
+
+includes:
+  docker: ./docker/Taskfile.yml
+  utils: ./utils/Taskfile.yml
+  env: ./env/Taskfile.yml
+
+vars:
+  # Variables avec valeurs par défaut depuis .env ou valeurs de fallback
+  PROJECT_NAME: '{{.PROJECT_NAME | default "taskfiles-collection"}}'
+  PROJECT_VERSION: '{{.PROJECT_VERSION | default "1.0.0"}}'
+  ENVIRONMENT: '{{.ENVIRONMENT | default "development"}}'
+
+tasks:
+  default:
+    desc: "Affiche l'aide et les tâches disponibles"
+    silent: true
+    cmds:
+    - echo "🛠️  {{.PROJECT_NAME}} v{{.PROJECT_VERSION}} - Collection de Taskfiles"
+    - echo "Environnement:" {{.ENVIRONMENT}}
+    - echo ""
+    - echo "Tâches globales disponibles :"
+    - task --list
+    - echo ""
+    - echo "Pour voir les tâches d'une technologie spécifique :"
+    - echo "  task utils --list # Tâches utilitaires"
+    - echo "  task docker --list # Tâches Docker"
+    - echo ""
+
+  help:
+    desc: "Affiche l'aide détaillée"
+    aliases: [ h ]
+    cmds:
+    - task: default
