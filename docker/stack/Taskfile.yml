@@ -240,156 +240,85 @@ tasks:
       TIMEOUT: '{{.TIMEOUT | default "300"}}'
       CHECK_INTERVAL: '{{.CHECK_INTERVAL | default "10"}}'
     cmds:
-    - "if [ -z \"{{.CONTAINERS}}\" ]; then
-
-      \  echo \"❌ CONTAINERS est requis (ex: 'traefik,portainer')\"
-
-      \  exit 1
-
+    - |
+      if [ -z "{{.CONTAINERS}}" ]; then
+        echo "❌ CONTAINERS est requis (ex: 'traefik,portainer')"
+        exit 1
       fi
 
-
-      echo \"🔍 Vérification de l'état des conteneurs : {{.CONTAINERS}}\"
-
-      echo \"🕐 Timeout: {{.TIMEOUT}}s, Intervalle de vérification: {{.CHECK_INTERVAL}}s\"
-
-      echo \"\"
-
+      echo "🔍 Vérification de l'état des conteneurs : {{.CONTAINERS}}"
+      echo "🕐 Timeout: {{.TIMEOUT}}s, Intervalle de vérification: {{.CHECK_INTERVAL}}s"
+      echo ""
 
       start_time=$(date +%s)
-
       timeout_time=$((start_time + {{.TIMEOUT}}))
 
-
       # Convertir la liste en tableau compatible POSIX
-
-      containers_list=\"{{.CONTAINERS}}\"
-
-      containers_clean=$(echo \"$containers_list\" | tr ',' ' ')
-
+      containers_list="{{.CONTAINERS}}"
+      containers_clean=$(echo "$containers_list" | tr ',' ' ')
 
       # Compteur de vérifications
-
       check_count=0
 
-
       while true; do
-
-      \  current_time=$(date +%s)
-
-      \  check_count=$((check_count + 1))
-
-      \ \ 
-
-      \  # Vérifier le timeout
-
-      \  if [ $current_time -gt $timeout_time ]; then
-
-      \    echo \"\"
-
-      \    echo \"❌ Timeout atteint ({{.TIMEOUT}}s). Tous les conteneurs ne sont pas encore prêts.\"
-
-      \    echo \"\udccb État final des conteneurs :\"
-
-      \    docker ps --filter \"name={{.STACK_NAME}}\" --format \"table {{.Names}}\\t{{.Status}}\"
-
-      \    exit 1
-
-      \  fi
-
-      \ \ 
-
-      \  all_ready=true
-
-      \  ready_containers=\"\"
-
-      \  missing_containers=\"\"
-
-      \ \ 
-
-      \  # Vérifier chaque conteneur
-
-      \  for container in $containers_clean; do
-
-      \    container=$(echo \"$container\" | xargs)  # Trim whitespace
-
-      \   \ 
-
-      \    if docker ps --filter \"name={{.STACK_NAME}}_${container}\" --format \"{{.Names}}\" | grep -q \"{{.STACK_NAME}}_${container}\"; then
-
-      \      ready_containers=\"$ready_containers $container\"
-
-      \    else
-
-      \      missing_containers=\"$missing_containers $container\"
-
-      \      all_ready=false
-
-      \    fi
-
-      \  done
-
-      \ \ 
-
-      \  # Affichage de l'état
-
-      \  elapsed=$((current_time - start_time))
-
-      \  echo \"⏳ Vérification #$check_count (${elapsed}s/{{.TIMEOUT}}s)\"
-
-      \ \ 
-
-      \  if [ -n \"$ready_containers\" ]; then
-
-      \    echo \"  ✅ Prêts     :$ready_containers\"
-
-      \  fi
-
-      \ \ 
-
-      \  if [ -n \"$missing_containers\" ]; then
-
-      \    echo \"  ⏳ En attente :$missing_containers\"
-
-      \  fi
-
-      \ \ 
-
-      \  # Si tous les conteneurs sont prêts, on sort de la boucle
-
-      \  if [ \"$all_ready\" = true ]; then
-
-      \    echo \"\"
-
-      \    echo \"🎉 Succès ! Tous les conteneurs sont actifs !\"
-
-      \    echo \"⏱️  Temps total d'attente : ${elapsed}s\"
-
-      \    echo \"\"
-
-      \    echo \"📋 Conteneurs actifs :\"
-
-      \    for container in $containers_clean; do
-
-      \      container=$(echo \"$container\" | xargs)
-
-      \      status=$(docker ps --filter \"name={{.STACK_NAME}}_${container}\" --format \"{{.Status}}\")
-
-      \      echo \"  ✅ ${container} - $status\"
-
-      \    done
-
-      \    break
-
-      \  fi
-
-      \ \ 
-
-      \  echo \"\"
-
-      \  sleep {{.CHECK_INTERVAL}}
-
-      done\n"
+        current_time=$(date +%s)
+        check_count=$((check_count + 1))
+        
+        # Vérifier le timeout
+        if [ $current_time -gt $timeout_time ]; then
+          echo ""
+          echo "❌ Timeout atteint ({{.TIMEOUT}}s). Tous les conteneurs ne sont pas encore prêts."
+          echo "📋 État final des conteneurs :"
+          docker ps --filter "name={{.STACK_NAME}}" --format "table {{.Names}}\t{{.Status}}"
+          exit 1
+        fi
+        
+        all_ready=true
+        ready_containers=""
+        missing_containers=""
+        
+        # Vérifier chaque conteneur
+        for container in $containers_clean; do
+          container=$(echo "$container" | xargs)  # Trim whitespace
+          
+          if docker ps --filter "name={{.STACK_NAME}}_${container}" --format "{{.Names}}" | grep -q "{{.STACK_NAME}}_${container}"; then
+            ready_containers="$ready_containers $container"
+          else
+            missing_containers="$missing_containers $container"
+            all_ready=false
+          fi
+        done
+        
+        # Affichage de l'état
+        elapsed=$((current_time - start_time))
+        echo "⏳ Vérification #$check_count (${elapsed}s/{{.TIMEOUT}}s)"
+        
+        if [ -n "$ready_containers" ]; then
+          echo "  ✅ Prêts     :$ready_containers"
+        fi
+        
+        if [ -n "$missing_containers" ]; then
+          echo "  ⏳ En attente :$missing_containers"
+        fi
+        
+        # Si tous les conteneurs sont prêts, on sort de la boucle
+        if [ "$all_ready" = true ]; then
+          echo ""
+          echo "🎉 Succès ! Tous les conteneurs sont actifs !"
+          echo "⏱️  Temps total d'attente : ${elapsed}s"
+          echo ""
+          echo "📋 Conteneurs actifs :"
+          for container in $containers_clean; do
+            container=$(echo "$container" | xargs)
+            status=$(docker ps --filter "name={{.STACK_NAME}}_${container}" --format "{{.Status}}")
+            echo "  ✅ ${container} - $status"
+          done
+          break
+        fi
+        
+        echo ""
+        sleep {{.CHECK_INTERVAL}}
+      done
 
   wait:containers:ready:
     desc: "Attend que les conteneurs spécifiés soient prêts"
@@ -457,145 +386,3 @@ tasks:
         echo "⏳ Attente... (${elapsed}s/{{.TIMEOUT}}s)"
         sleep {{.CHECK_INTERVAL}}
       done
-
-  check:containers:health:
-    desc: "Vérifie la santé des conteneurs avec healthcheck"
-    silent: true
-    preconditions:
-    - sh: command -v docker
-      msg: "Docker n'est pas installé ou accessible"
-    summary: |
-      Vérifie l'état de santé des conteneurs qui ont un healthcheck configuré.
-
-      Variables:
-      - CONTAINERS: Liste des conteneurs séparés par des virgules (ex: "traefik,portainer")
-      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
-    cmds:
-    - |
-      if [ -z "{{.CONTAINERS}}" ]; then
-        echo "❌ CONTAINERS est requis (ex: 'traefik,portainer')"
-        exit 1
-      fi
-
-      echo "🏥 Vérification de la santé des conteneurs : {{.CONTAINERS}}"
-
-      # Convertir la liste en tableau
-      IFS=',' read -ra CONTAINER_ARRAY <<< "{{.CONTAINERS}}"
-
-      for container in "${CONTAINER_ARRAY[@]}"; do
-        container=$(echo "$container" | xargs)  # Trim whitespace
-        full_name="{{.STACK_NAME}}_${container}"
-        
-        echo "🔍 Vérification de $container..."
-        
-        # Vérifier si le conteneur existe
-        if ! docker ps --filter "name=$full_name" --format "{{.Names}}" | grep -q "$full_name"; then
-          echo "❌ Conteneur $container n'existe pas ou n'est pas actif"
-          continue
-        fi
-        
-        # Obtenir l'état de santé
-        health_status=$(docker inspect $full_name --format='{{.State.Health.Status}}' 2>/dev/null || echo "no-healthcheck")
-        
-        case $health_status in
-          "healthy")
-            echo "✅ $container: Sain"
-            ;;
-          "unhealthy")
-            echo "❌ $container: Non sain"
-            ;;
-          "starting")
-            echo "🟡 $container: Démarrage en cours"
-            ;;
-          "no-healthcheck")
-            echo "ℹ️  $container: Pas de healthcheck configuré"
-            ;;
-          *)
-            echo "❓ $container: État inconnu ($health_status)"
-            ;;
-        esac
-      done
-
-  deploy:with:wait:
-    desc: "Déploie une stack et attend que les conteneurs soient prêts"
-    silent: true
-    preconditions:
-    - sh: command -v docker
-      msg: "Docker n'est pas installé ou accessible"
-    summary: |
-      Déploie une stack et attend que les conteneurs spécifiés soient actifs.
-
-      Variables:
-      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
-      - COMPOSE_FILE: Fichier docker-compose (défaut: docker-compose.yml)
-      - CONTAINERS: Liste des conteneurs à vérifier (ex: "traefik,portainer")
-      - TIMEOUT: Timeout en secondes (défaut: 300)
-
-      Exemple:
-      task docker:stack:deploy:with:wait CONTAINERS="traefik,portainer" TIMEOUT=600
-    cmds:
-    - task: deploy
-    - |
-      if [ -n "{{.CONTAINERS}}" ]; then
-        task docker:stack:wait:containers:ready CONTAINERS="{{.CONTAINERS}}" STACK_NAME="{{.STACK_NAME}}" TIMEOUT="{{.TIMEOUT | default \"300\"}}"
-      else
-        echo "ℹ️  Aucun conteneur spécifique à vérifier (CONTAINERS non défini)"
-        echo "⏳ Attente de 30 secondes pour la stabilisation..."
-        sleep 30
-      fi
-
-  full-deploy:
-    desc: "Déploiement complet : validation + construction + déploiement"
-    silent: true
-    preconditions:
-    - sh: command -v docker
-      msg: "Docker n'est pas installé ou accessible"
-    summary: |
-      Effectue un déploiement complet avec toutes les étapes :
-      1. Validation du fichier docker-compose
-      2. Construction des images si nécessaire
-      3. Déploiement de la stack
-      4. Vérification du statut
-
-      Variables:
-      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
-      - COMPOSE_FILE: Fichier docker-compose (défaut: docker-compose.yml)
-    cmds:
-    - task: docker:stack:validate
-    - |
-      echo "🔨 Construction des images..."
-      docker-compose -f {{.COMPOSE_FILE}} build
-    - task: stack:deploy
-    - |
-      echo "⏳ Attente du déploiement..."
-      sleep 5
-    - task: docker:stack:services
-    - task: docker:stack:ps
-
-  full-deploy:with:wait:
-    desc: "Déploiement complet avec attente des conteneurs"
-    silent: true
-    preconditions:
-    - sh: command -v docker
-      msg: "Docker n'est pas installé ou accessible"
-    summary: |
-      Effectue un déploiement complet et attend que les conteneurs soient prêts :
-      1. Validation du fichier docker-compose
-      2. Construction des images si nécessaire
-      3. Déploiement de la stack
-      4. Attente que les conteneurs soient actifs
-      5. Vérification du statut
-
-      Variables:
-      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
-      - COMPOSE_FILE: Fichier docker-compose (défaut: docker-compose.yml)
-      - CONTAINERS: Liste des conteneurs à vérifier (ex: "traefik,portainer")
-      - TIMEOUT: Timeout en secondes (défaut: 300)
-    cmds:
-    - task: docker:stack:validate
-    - |
-      echo "🔨 Construction des images..."
-      docker-compose -f {{.COMPOSE_FILE}} build
-    - task: deploy:with:wait
-    - task: docker:stack:services
-    - task: docker:stack:ps
