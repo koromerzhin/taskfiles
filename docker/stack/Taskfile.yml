@@ -77,7 +77,7 @@ tasks:
       - COMPOSE_FILE: Fichier docker-compose (défaut: docker-compose.yml)
     cmds:
     - |
-      if ! docker stack ls --format "{{{{.Name}}}}" | grep -q "^{{.STACK_NAME}}$"; then
+      if ! docker stack ls --format "{{.Name}}" | grep -q "^{{.STACK_NAME}}$"; then
         echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
         echo "📋 Stacks disponibles :"
         docker stack ls
@@ -101,7 +101,7 @@ tasks:
       - STACK_NAME: Nom de la stack à supprimer (défaut: taskfiles-stack)
     cmds:
     - |
-      if ! docker stack ls --format "{{{{.Name}}}}" | grep -q "^{{.STACK_NAME}}$"; then
+      if ! docker stack ls --format "{{.Name}}" | grep -q "^{{.STACK_NAME}}$"; then
         echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
         echo "📋 Stacks disponibles :"
         docker stack ls
@@ -136,7 +136,7 @@ tasks:
       - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
     cmds:
     - |
-      if ! docker stack ls --format "{{{{.Name}}}}" | grep -q "^{{.STACK_NAME}}$"; then
+      if ! docker stack ls --format "{{.Name}}" | grep -q "^{{.STACK_NAME}}$"; then
         echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
         echo "📋 Stacks disponibles :"
         docker stack ls
@@ -159,7 +159,7 @@ tasks:
       - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
     cmds:
     - |
-      if ! docker stack ls --format "{{{{.Name}}}}" | grep -q "^{{.STACK_NAME}}$"; then
+      if ! docker stack ls --format "{{.Name}}" | grep -q "^{{.STACK_NAME}}$"; then
         echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
         echo "📋 Stacks disponibles :"
         docker stack ls
@@ -189,7 +189,7 @@ tasks:
       if [ -z "{{.SERVICE_NAME}}" ]; then
         echo "❌ SERVICE_NAME est requis"
         echo "🔧 Services disponibles pour la stack '{{.STACK_NAME}}' :"
-        docker stack services {{.STACK_NAME}} --format "table {{{{.Name}}}}\t{{{{.Replicas}}}}\t{{{{.Image}}}}"
+        docker stack services {{.STACK_NAME}} --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
         exit 1
       fi
 
@@ -318,7 +318,7 @@ tasks:
         for container in "${CONTAINER_ARRAY[@]}"; do
           container=$(echo "$container" | xargs)  # Trim whitespace
           
-          if ! docker ps --filter "name={{.STACK_NAME}}_${container}" --format "{{{{.Names}}}}" | grep -q "{{.STACK_NAME}}_${container}"; then
+          if ! docker ps --filter "name={{.STACK_NAME}}_${container}" --format "{{.Names}}" | grep -q "{{.STACK_NAME}}_${container}"; then
             all_ready=false
             break
           fi
@@ -365,13 +365,13 @@ tasks:
         echo "🔍 Vérification de $container..."
         
         # Vérifier si le conteneur existe
-        if ! docker ps --filter "name=$full_name" --format "{{{{.Names}}}}" | grep -q "$full_name"; then
+        if ! docker ps --filter "name=$full_name" --format "{{.Names}}" | grep -q "$full_name"; then
           echo "❌ Conteneur $container n'existe pas ou n'est pas actif"
           continue
         fi
         
         # Obtenir l'état de santé
-        health_status=$(docker inspect $full_name --format='{{{{.State.Health.Status}}}}' 2>/dev/null || echo "no-healthcheck")
+        health_status=$(docker inspect $full_name --format='{{.State.Health.Status}}' 2>/dev/null || echo "no-healthcheck")
         
         case $health_status in
           "healthy")
