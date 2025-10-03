@@ -1,0 +1,133 @@
+version: '3'
+
+vars:
+  COMPOSE_FILE: '{{.COMPOSE_FILE | default "docker-compose.yml"}}'
+
+tasks:
+  list:
+    desc: "Liste toutes les images utilisées dans docker-compose.yml"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Extrait et affiche toutes les images définies dans un fichier docker-compose.yml.
+
+      Variables:
+      - COMPOSE_FILE: Chemin vers le fichier docker-compose (défaut: docker-compose.yml)
+
+      Exemples:
+      task docker:images:list
+      task docker:images:list COMPOSE_FILE=docker-compose.prod.yml
+    cmds:
+    - |
+      if [ ! -f "{{.COMPOSE_FILE}}" ]; then
+        echo "❌ Le fichier '{{.COMPOSE_FILE}}' n'existe pas"
+        echo "📁 Fichiers docker-compose disponibles :"
+        find . -name "docker-compose*.yml" -o -name "compose*.yml" 2>/dev/null || echo "   Aucun fichier docker-compose trouvé"
+        exit 1
+      fi
+
+      echo "📋 Images extraites de '{{.COMPOSE_FILE}}' :"
+      echo ""
+
+      # Extraction des images avec yq si disponible, sinon avec grep/sed
+      grep -E "^\s*image:" {{.COMPOSE_FILE}} | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq | while read -r image; do
+        if [ -n "$image" ]; then
+          echo "  🐳 $image"
+        fi
+      done
+
+  pull:
+    desc: "Télécharge toutes les images du docker-compose.yml"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Utilise docker-compose pour télécharger toutes les images définies dans le fichier.
+
+      Variables:
+      - COMPOSE_FILE: Chemin vers le fichier docker-compose (défaut: docker-compose.yml)
+
+      Exemples:
+      task docker:images:pull
+      task docker:images:pull COMPOSE_FILE=docker-compose.prod.yml
+    cmds:
+    - |
+      if [ ! -f "{{.COMPOSE_FILE}}" ]; then
+        echo "❌ Le fichier '{{.COMPOSE_FILE}}' n'existe pas"
+        exit 1
+      fi
+
+      echo "⬇️  Téléchargement des images depuis '{{.COMPOSE_FILE}}'..."
+      docker-compose -f {{.COMPOSE_FILE}} pull
+
+  extract:
+    desc: "Extrait les images vers un fichier texte"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Extrait la liste des images dans un fichier texte pour sauvegarde ou traitement.
+
+      Variables:
+      - COMPOSE_FILE: Fichier docker-compose source (défaut: docker-compose.yml)
+      - OUTPUT_FILE: Fichier de sortie (défaut: docker-images.txt)
+
+      Exemples:
+      task docker:images:extract
+      task docker:images:extract OUTPUT_FILE=images-prod.txt
+    vars:
+      OUTPUT_FILE: '{{.OUTPUT_FILE | default "docker-images.txt"}}'
+    cmds:
+    - |
+      if [ ! -f "{{.COMPOSE_FILE}}" ]; then
+        echo "❌ Le fichier '{{.COMPOSE_FILE}}' n'existe pas"
+        exit 1
+      fi
+
+      echo "💾 Extraction des images vers '{{.OUTPUT_FILE}}'..."
+
+      if command -v yq >/dev/null 2>&1; then
+        yq eval '.services.*.image' {{.COMPOSE_FILE}} 2>/dev/null | grep -v "null" | sort | uniq > {{.OUTPUT_FILE}}
+      else
+        grep -E "^\s*image:" {{.COMPOSE_FILE}} | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq > {{.OUTPUT_FILE}}
+      fi
+
+      echo "✅ Images extraites dans '{{.OUTPUT_FILE}}'"
+      echo "📊 Nombre d'images trouvées: $(wc -l < {{.OUTPUT_FILE}})"
+
+  check:
+    desc: "Vérifie la disponibilité des images localement"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Vérifie quelles images du docker-compose.yml sont présentes localement.
+
+      Variables:
+      - COMPOSE_FILE: Chemin vers le fichier docker-compose (défaut: docker-compose.yml)
+    cmds:
+    - |
+      if [ ! -f "{{.COMPOSE_FILE}}" ]; then
+        echo "❌ Le fichier '{{.COMPOSE_FILE}}' n'existe pas"
+        exit 1
+      fi
+
+      echo "🔍 Vérification de la disponibilité des images..."
+      echo ""
+
+      images=$(grep -E "^\s*image:" {{.COMPOSE_FILE}} | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq)
+
+      while IFS= read -r image; do
+        if [ -n "$image" ] && [ "$image" != "null" ]; then
+          if docker image inspect "$image" >/dev/null 2>&1; then
+            echo "  ✅ $image (disponible localement)"
+          else
+            echo "  ❌ $image (non disponible localement)"
+          fi
+        fi
+      done <<< "$images"

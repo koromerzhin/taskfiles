@@ -1,0 +1,247 @@
+version: '3'
+
+vars:
+  STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
+  COMPOSE_FILE: '{{.COMPOSE_FILE | default "docker-compose.yml"}}'
+  SWARM_COMPOSE_FILE: '{{.SWARM_COMPOSE_FILE | default "docker-stack.yml"}}'
+
+tasks:
+  deploy:
+    desc: "Déploie une stack Docker Swarm"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Déploie une stack Docker en utilisant docker stack deploy.
+
+      Variables:
+      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
+      - COMPOSE_FILE: Fichier docker-compose à utiliser (défaut: docker-compose.yml)
+
+      Exemples:
+      task docker:stack:deploy
+      task docker:stack:deploy STACK_NAME=mon-app
+      task docker:stack:deploy STACK_NAME=mon-app COMPOSE_FILE=docker-stack.yml
+    cmds:
+    - |
+      if [ ! -f "{{.COMPOSE_FILE}}" ]; then
+        echo "❌ Le fichier '{{.COMPOSE_FILE}}' n'existe pas"
+        echo "📁 Fichiers disponibles :"
+        find . -name "docker-*.yml" -o -name "*compose*.yml" 2>/dev/null || echo "   Aucun fichier trouvé"
+        exit 1
+      fi
+
+      echo "🚀 Déploiement de la stack '{{.STACK_NAME}}' avec le fichier '{{.COMPOSE_FILE}}'..."
+      docker stack deploy -c {{.COMPOSE_FILE}} {{.STACK_NAME}}
+      echo "✅ Stack '{{.STACK_NAME}}' déployée avec succès"
+
+  deploy:with-build:
+    desc: "Déploie une stack après avoir construit les images"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Construit les images puis déploie la stack Docker Swarm.
+
+      Variables:
+      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
+      - COMPOSE_FILE: Fichier docker-compose (défaut: docker-compose.yml)
+    cmds:
+    - |
+      if [ ! -f "{{.COMPOSE_FILE}}" ]; then
+        echo "❌ Le fichier '{{.COMPOSE_FILE}}' n'existe pas"
+        exit 1
+      fi
+
+      echo "🔨 Construction des images..."
+      docker-compose -f {{.COMPOSE_FILE}} build
+
+      echo "🚀 Déploiement de la stack '{{.STACK_NAME}}'..."
+      docker stack deploy -c {{.COMPOSE_FILE}} {{.STACK_NAME}}
+      echo "✅ Stack '{{.STACK_NAME}}' construite et déployée"
+
+  update:
+    desc: "Met à jour une stack existante"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Met à jour une stack Docker Swarm existante.
+      Équivalent à docker stack deploy mais avec des messages spécifiques à la mise à jour.
+
+      Variables:
+      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
+      - COMPOSE_FILE: Fichier docker-compose (défaut: docker-compose.yml)
+    cmds:
+    - |
+      if ! docker stack ls --format "{{{{.Name}}}}" | grep -q "^{{.STACK_NAME}}$"; then
+        echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
+        echo "📋 Stacks disponibles :"
+        docker stack ls
+        exit 1
+      fi
+
+      echo "🔄 Mise à jour de la stack '{{.STACK_NAME}}'..."
+      docker stack deploy -c {{.COMPOSE_FILE}} {{.STACK_NAME}}
+      echo "✅ Stack '{{.STACK_NAME}}' mise à jour"
+
+  remove:
+    desc: "Supprime une stack Docker Swarm"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Supprime complètement une stack Docker Swarm.
+
+      Variables:
+      - STACK_NAME: Nom de la stack à supprimer (défaut: taskfiles-stack)
+    cmds:
+    - |
+      if ! docker stack ls --format "{{{{.Name}}}}" | grep -q "^{{.STACK_NAME}}$"; then
+        echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
+        echo "📋 Stacks disponibles :"
+        docker stack ls
+        exit 1
+      fi
+
+      echo "🗑️  Suppression de la stack '{{.STACK_NAME}}'..."
+      docker stack rm {{.STACK_NAME}}
+      echo "✅ Stack '{{.STACK_NAME}}' supprimée"
+
+  list:
+    desc: "Liste toutes les stacks Docker Swarm"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: "Affiche la liste de toutes les stacks déployées"
+    cmds:
+    - echo "📋 Stacks Docker Swarm déployées :"
+    - docker stack ls
+
+  services:
+    desc: "Liste les services d'une stack"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Affiche tous les services d'une stack spécifique.
+
+      Variables:
+      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
+    cmds:
+    - |
+      if ! docker stack ls --format "{{{{.Name}}}}" | grep -q "^{{.STACK_NAME}}$"; then
+        echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
+        echo "📋 Stacks disponibles :"
+        docker stack ls
+        exit 1
+      fi
+
+      echo "🔧 Services de la stack '{{.STACK_NAME}}' :"
+      docker stack services {{.STACK_NAME}}
+
+  ps:
+    desc: "Affiche les tâches/conteneurs d'une stack"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Affiche toutes les tâches (conteneurs) d'une stack.
+
+      Variables:
+      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
+    cmds:
+    - |
+      if ! docker stack ls --format "{{{{.Name}}}}" | grep -q "^{{.STACK_NAME}}$"; then
+        echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
+        echo "📋 Stacks disponibles :"
+        docker stack ls
+        exit 1
+      fi
+
+      echo "📦 Tâches de la stack '{{.STACK_NAME}}' :"
+      docker stack ps {{.STACK_NAME}}
+
+  logs:
+    desc: "Affiche les logs d'un service de la stack"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Affiche les logs d'un service spécifique dans une stack.
+
+      Variables:
+      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
+      - SERVICE_NAME: Nom du service (requis)
+
+      Exemple:
+      task docker:stack:logs STACK_NAME=mon-app SERVICE_NAME=web
+    cmds:
+    - |
+      if [ -z "{{.SERVICE_NAME}}" ]; then
+        echo "❌ SERVICE_NAME est requis"
+        echo "🔧 Services disponibles pour la stack '{{.STACK_NAME}}' :"
+        docker stack services {{.STACK_NAME}} --format "table {{{{.Name}}}}\t{{{{.Replicas}}}}\t{{{{.Image}}}}"
+        exit 1
+      fi
+
+      echo "📄 Logs du service '{{.STACK_NAME}}_{{.SERVICE_NAME}}' :"
+      docker service logs {{.STACK_NAME}}_{{.SERVICE_NAME}} --follow
+
+  validate:
+    desc: "Valide un fichier docker-compose pour Docker Swarm"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Valide la syntaxe d'un fichier docker-compose avant déploiement.
+
+      Variables:
+      - COMPOSE_FILE: Fichier à valider (défaut: docker-compose.yml)
+    cmds:
+    - |
+      if [ ! -f "{{.COMPOSE_FILE}}" ]; then
+        echo "❌ Le fichier '{{.COMPOSE_FILE}}' n'existe pas"
+        exit 1
+      fi
+
+      echo "✅ Validation du fichier '{{.COMPOSE_FILE}}'..."
+      docker-compose -f {{.COMPOSE_FILE}} config
+      echo "✅ Fichier valide"
+
+  full-deploy:
+    desc: "Déploiement complet : validation + construction + déploiement"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Effectue un déploiement complet avec toutes les étapes :
+      1. Validation du fichier docker-compose
+      2. Construction des images si nécessaire
+      3. Déploiement de la stack
+      4. Vérification du statut
+
+      Variables:
+      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
+      - COMPOSE_FILE: Fichier docker-compose (défaut: docker-compose.yml)
+    cmds:
+    - task: docker:stack:validate
+    - |
+      echo "🔨 Construction des images..."
+      docker-compose -f {{.COMPOSE_FILE}} build
+    - task: stack:deploy
+    - |
+      echo "⏳ Attente du déploiement..."
+      sleep 5
+    - task: docker:stack:services
+    - task: docker:stack:ps

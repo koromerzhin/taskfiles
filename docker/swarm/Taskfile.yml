@@ -66,6 +66,9 @@ tasks:
   status:
     desc: "Affiche le statut du cluster Docker Swarm"
     silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
     cmds:
     - |
       if docker info --format '{{.Swarm.LocalNodeState}}' | grep -q active; then
@@ -84,6 +87,9 @@ tasks:
   leave:
     desc: "Quitte le cluster Docker Swarm"
     silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
     prompt: "Êtes-vous sûr de vouloir quitter le cluster Swarm ? (y/N)"
     cmds:
     - |
@@ -98,6 +104,8 @@ tasks:
     desc: "Affiche les tokens pour rejoindre le cluster"
     silent: true
     preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
     - sh: docker info --format '{{.Swarm.LocalNodeState}}' | grep -q active
       msg: "Docker Swarm n'est pas initialisé sur ce nœud"
     cmds:

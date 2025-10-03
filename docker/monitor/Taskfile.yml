@@ -1,0 +1,72 @@
+version: '3'
+
+vars:
+  IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
+
+tasks:
+  monitor:container:start:
+    desc: "Surveille le lancement de conteneurs en temps réel"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Surveille les événements Docker pour détecter le lancement de conteneurs.
+      Affiche quand une image est lancée avec l'horodatage.
+
+      Variables:
+      - IMAGE_NAME: Filtrer par nom d'image spécifique (optionnel)
+
+      Exemples:
+      task docker:monitor:container:start
+      task docker:monitor:container:start IMAGE_NAME=nginx
+    cmds:
+    - |
+      echo "🔍 Surveillance des lancements de conteneurs en temps réel..."
+      echo "   Appuyez sur Ctrl+C pour arrêter"
+      echo ""
+
+      if [ -n "{{.IMAGE_NAME}}" ]; then
+        echo "🎯 Filtrage pour l'image: {{.IMAGE_NAME}}"
+        docker events --filter container --filter event=start --filter image={{.IMAGE_NAME}} --format "{{{{.TimeNano}}}} - 🚀 Container {{{{.Actor.Attributes.name}}}} ({{{{.Actor.Attributes.image}}}}) started"
+      else
+        docker events --filter container --filter event=start --format "{{{{.TimeNano}}}} - 🚀 Container {{{{.Actor.Attributes.name}}}} ({{{{.Actor.Attributes.image}}}}) started"
+      fi
+
+  monitor:events:
+    desc: "Surveille tous les événements Docker"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Affiche tous les événements Docker en temps réel (start, stop, create, destroy, etc.).
+
+      Variables:
+      - IMAGE_NAME: Filtrer par image (optionnel)
+      - EVENT_TYPE: Type d'événement (start, stop, create, destroy, etc.)
+
+      Exemples:
+      task docker:monitor:events
+      task docker:monitor:events EVENT_TYPE=start
+      task docker:monitor:events IMAGE_NAME=nginx EVENT_TYPE=start
+    cmds:
+    - |
+      echo "📡 Surveillance des événements Docker en temps réel..."
+      echo "   Appuyez sur Ctrl+C pour arrêter"
+      echo ""
+
+      filters="--filter container"
+
+      if [ -n "{{.IMAGE_NAME}}" ]; then
+        filters="$filters --filter image={{.IMAGE_NAME}}"
+        echo "🎯 Filtrage pour l'image: {{.IMAGE_NAME}}"
+      fi
+
+      if [ -n "{{.EVENT_TYPE}}" ]; then
+        filters="$filters --filter event={{.EVENT_TYPE}}"
+        echo "🎯 Filtrage pour l'événement: {{.EVENT_TYPE}}"
+      fi
+
+      echo ""
+      docker events $filters --format "{{{{.Time}}}} - {{{{.Action}}}} - {{{{.Actor.Attributes.name}}}} ({{{{.Actor.Attributes.image}}}})"
