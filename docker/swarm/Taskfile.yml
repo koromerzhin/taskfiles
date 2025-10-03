@@ -1,0 +1,108 @@
+version: '3'
+
+# Taskfile pour Docker et Docker Compose
+
+vars:
+  # Variables pour Docker Swarm avec valeurs par défaut
+  SWARM_DEFAULT_ADDR_POOL: '{{.SWARM_DEFAULT_ADDR_POOL | default "10.20.0.0/16"}}'
+  SWARM_ADVERTISE_ADDR: '{{.SWARM_ADVERTISE_ADDR | default ""}}'
+  SWARM_LISTEN_ADDR: '{{.SWARM_LISTEN_ADDR | default ""}}'
+
+tasks:
+  init:
+    desc: "Initialise Docker Swarm avec options configurables"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    cmds:
+    - |
+      echo "🐳 Initialisation de Docker Swarm..."
+
+      # Construction de la commande avec options conditionnelles
+      SWARM_CMD="docker swarm init"
+
+      # Ajouter default-addr-pool
+      if [ -n "{{.SWARM_DEFAULT_ADDR_POOL}}" ]; then
+        SWARM_CMD="$SWARM_CMD --default-addr-pool {{.SWARM_DEFAULT_ADDR_POOL}}"
+        echo "📋 Pool d'adresses par défaut: {{.SWARM_DEFAULT_ADDR_POOL}}"
+      fi
+
+      # Ajouter advertise-addr si spécifié
+      if [ -n "{{.SWARM_ADVERTISE_ADDR}}" ]; then
+        SWARM_CMD="$SWARM_CMD --advertise-addr {{.SWARM_ADVERTISE_ADDR}}"
+        echo "📡 Adresse d'annonce: {{.SWARM_ADVERTISE_ADDR}}"
+      fi
+
+      # Ajouter listen-addr si spécifié
+      if [ -n "{{.SWARM_LISTEN_ADDR}}" ]; then
+        SWARM_CMD="$SWARM_CMD --listen-addr {{.SWARM_LISTEN_ADDR}}"
+        echo "👂 Adresse d'écoute: {{.SWARM_LISTEN_ADDR}}"
+      fi
+
+      echo "🚀 Exécution: $SWARM_CMD"
+      eval $SWARM_CMD
+
+      if [ $? -eq 0 ]; then
+        echo "✅ Docker Swarm initialisé avec succès!"
+        echo "📋 Pour voir les informations du cluster:"
+        echo "   docker info"
+        echo "📋 Pour ajouter des nœuds:"
+        echo "   docker swarm join-token worker"
+        echo "   docker swarm join-token manager"
+      else
+        echo "❌ Échec de l'initialisation de Docker Swarm"
+      fi
+
+  init-simple:
+    desc: "Initialise Docker Swarm avec options par défaut"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    cmds:
+    - docker swarm init --default-addr-pool {{.SWARM_DEFAULT_ADDR_POOL}} --advertise-addr {{.SWARM_ADVERTISE_ADDR}}
+
+  status:
+    desc: "Affiche le statut du cluster Docker Swarm"
+    silent: true
+    cmds:
+    - |
+      if docker info --format '{{.Swarm.LocalNodeState}}' | grep -q active; then
+        echo "✅ Docker Swarm est actif"
+        echo ""
+        echo "📋 Informations du cluster:"
+        docker node ls
+        echo ""
+        echo "📋 Services en cours d'exécution:"
+        docker service ls
+      else
+        echo "❌ Docker Swarm n'est pas initialisé"
+        echo "💡 Pour l'initialiser: task docker:swarm:init"
+      fi
+
+  leave:
+    desc: "Quitte le cluster Docker Swarm"
+    silent: true
+    prompt: "Êtes-vous sûr de vouloir quitter le cluster Swarm ? (y/N)"
+    cmds:
+    - |
+      echo "🚪 Sortie du cluster Docker Swarm..."
+      if docker swarm leave --force; then
+        echo "✅ Quitté le cluster Docker Swarm avec succès"
+      else
+        echo "❌ Échec de la sortie du cluster"
+      fi
+
+  join-tokens:
+    desc: "Affiche les tokens pour rejoindre le cluster"
+    silent: true
+    preconditions:
+    - sh: docker info --format '{{.Swarm.LocalNodeState}}' | grep -q active
+      msg: "Docker Swarm n'est pas initialisé sur ce nœud"
+    cmds:
+    - echo "🔑 Token pour ajouter un Worker:"
+    - docker swarm join-token worker
+    - echo ""
+    - echo "🔑 Token pour ajouter un Manager:"
+    - docker swarm join-token manager

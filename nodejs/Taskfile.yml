@@ -1,0 +1,19 @@
+version: 3
+# Taskfile pour les projets Node.js
+tasks:
+  install:
+    desc: "Installe les dépendances Node.js"
+    silent: true
+    preconditions:
+    - sh: command -v npm
+    - sh: "test -f package.json"
+      msg: "Le fichier package.json est requis pour cette tâche"
+    cmds:
+    - npm install
+  init:
+    desc: "Initialise le projet Node.js en installant les dépendances"
+    silent: true
+    preconditions:
+    - sh: command -v npm
+    cmds:
+    - npm init -y

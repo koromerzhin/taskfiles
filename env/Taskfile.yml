@@ -1,5 +1,5 @@
 version: '3'
-
+# Taskfile pour la gestion des variables d'environnement
 tasks:
   init:
     desc: "Initialise le fichier .env depuis .env.example"
@@ -22,10 +22,11 @@ tasks:
   validate:
     desc: "Valide la configuration du fichier .env"
     silent: true
+    deps: [ init ]
     cmds:
     - |
       if [ ! -f ".env" ]; then
-        echo "❌ Fichier .env non trouvé. Exécutez 'task env-init' d'abord."
+        echo "❌ Fichier .env non trouvé. Exécutez 'task env:init' d'abord."
         exit 1
       fi
     - echo "✅ Fichier .env trouvé"

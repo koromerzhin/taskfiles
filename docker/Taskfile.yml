@@ -1,7 +1,6 @@
 version: '3'
 
-# Taskfile pour Docker et Docker Compose
-
-vars:
+includes:
+  swarm: ./swarm/Taskfile.yml
 
 tasks:
