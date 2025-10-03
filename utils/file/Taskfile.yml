@@ -183,10 +183,6 @@ tasks:
   rename:
     desc: "Renomme un fichier dans le même dossier"
     silent: true
-    vars:
-      SOURCE_FILE: '{{.SOURCE_FILE | default ""}}'
-      NEW_NAME: '{{.NEW_NAME | default ""}}'
-      FORCE: '{{.FORCE | default "false"}}'
     summary: |
       Renomme un fichier dans son dossier actuel.
 
@@ -201,7 +197,9 @@ tasks:
       task utils:file:rename SOURCE_FILE=./old_name.txt NEW_NAME=new_name.txt
       task utils:file:rename SOURCE_FILE=./config.json NEW_NAME=config.backup.json FORCE=true
     vars:
+      SOURCE_FILE: '{{.SOURCE_FILE | default ""}}'
       NEW_NAME: '{{.NEW_NAME | default ""}}'
+      FORCE: '{{.FORCE | default "false"}}'
     preconditions:
     - sh: "[ -n '{{.SOURCE_FILE}}' ]"
       msg: "SOURCE_FILE est requis. Exemple: SOURCE_FILE=./fichier.txt"
