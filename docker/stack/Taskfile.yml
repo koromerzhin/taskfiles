@@ -226,47 +226,170 @@ tasks:
       msg: "Docker n'est pas installé ou accessible"
     summary: |
       Vérifie que les conteneurs d'une liste sont tous actifs et en bonne santé.
+      Attend et vérifie périodiquement jusqu'à ce que tous soient prêts ou timeout.
 
       Variables:
       - CONTAINERS: Liste des conteneurs séparés par des virgules (ex: "traefik,portainer")
       - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
       - TIMEOUT: Timeout en secondes (défaut: 300)
+      - CHECK_INTERVAL: Intervalle entre les vérifications en secondes (défaut: 10)
 
       Exemple:
       task docker:stack:check:containers:ready CONTAINERS="traefik,portainer" STACK_NAME=mon-app
     vars:
       TIMEOUT: '{{.TIMEOUT | default "300"}}'
+      CHECK_INTERVAL: '{{.CHECK_INTERVAL | default "10"}}'
     cmds:
-    - |
-      if [ -z "{{.CONTAINERS}}" ]; then
-        echo "❌ CONTAINERS est requis (ex: 'traefik,portainer')"
-        exit 1
+    - "if [ -z \"{{.CONTAINERS}}\" ]; then
+
+      \  echo \"❌ CONTAINERS est requis (ex: 'traefik,portainer')\"
+
+      \  exit 1
+
       fi
 
-      echo "🔍 Vérification de l'état des conteneurs : {{.CONTAINERS}}"
+
+      echo \"🔍 Vérification de l'état des conteneurs : {{.CONTAINERS}}\"
+
+      echo \"🕐 Timeout: {{.TIMEOUT}}s, Intervalle de vérification: {{.CHECK_INTERVAL}}s\"
+
+      echo \"\"
+
+
+      start_time=$(date +%s)
+
+      timeout_time=$((start_time + {{.TIMEOUT}}))
+
 
       # Convertir la liste en tableau compatible POSIX
-      containers_list="{{.CONTAINERS}}"
 
-      # Remplacer les virgules par des espaces et traiter chaque conteneur
-      containers_clean=$(echo "$containers_list" | tr ',' ' ')
+      containers_list=\"{{.CONTAINERS}}\"
 
-      for container in $containers_clean; do
-        container=$(echo "$container" | xargs)  # Trim whitespace
-        echo "📦 Vérification du conteneur: $container"
-        
-        # Vérifier si le conteneur existe et est en cours d'exécution
-        if docker ps --filter "name={{.STACK_NAME}}_${container}" --format "{{.Names}}" | grep -q "{{.STACK_NAME}}_${container}"; then
-          echo "✅ Conteneur $container est actif"
-        else
-          echo "❌ Conteneur $container n'est pas actif ou n'existe pas"
-          echo "📋 Conteneurs disponibles pour la stack {{.STACK_NAME}} :"
-          docker ps --filter "name={{.STACK_NAME}}" --format "table {{.Names}}\t{{.Status}}"
-          exit 1
-        fi
-      done
+      containers_clean=$(echo \"$containers_list\" | tr ',' ' ')
 
-      echo "✅ Tous les conteneurs sont actifs!"
+
+      # Compteur de vérifications
+
+      check_count=0
+
+
+      while true; do
+
+      \  current_time=$(date +%s)
+
+      \  check_count=$((check_count + 1))
+
+      \ \ 
+
+      \  # Vérifier le timeout
+
+      \  if [ $current_time -gt $timeout_time ]; then
+
+      \    echo \"\"
+
+      \    echo \"❌ Timeout atteint ({{.TIMEOUT}}s). Tous les conteneurs ne sont pas encore prêts.\"
+
+      \    echo \"\udccb État final des conteneurs :\"
+
+      \    docker ps --filter \"name={{.STACK_NAME}}\" --format \"table {{.Names}}\\t{{.Status}}\"
+
+      \    exit 1
+
+      \  fi
+
+      \ \ 
+
+      \  all_ready=true
+
+      \  ready_containers=\"\"
+
+      \  missing_containers=\"\"
+
+      \ \ 
+
+      \  # Vérifier chaque conteneur
+
+      \  for container in $containers_clean; do
+
+      \    container=$(echo \"$container\" | xargs)  # Trim whitespace
+
+      \   \ 
+
+      \    if docker ps --filter \"name={{.STACK_NAME}}_${container}\" --format \"{{.Names}}\" | grep -q \"{{.STACK_NAME}}_${container}\"; then
+
+      \      ready_containers=\"$ready_containers $container\"
+
+      \    else
+
+      \      missing_containers=\"$missing_containers $container\"
+
+      \      all_ready=false
+
+      \    fi
+
+      \  done
+
+      \ \ 
+
+      \  # Affichage de l'état
+
+      \  elapsed=$((current_time - start_time))
+
+      \  echo \"⏳ Vérification #$check_count (${elapsed}s/{{.TIMEOUT}}s)\"
+
+      \ \ 
+
+      \  if [ -n \"$ready_containers\" ]; then
+
+      \    echo \"  ✅ Prêts     :$ready_containers\"
+
+      \  fi
+
+      \ \ 
+
+      \  if [ -n \"$missing_containers\" ]; then
+
+      \    echo \"  ⏳ En attente :$missing_containers\"
+
+      \  fi
+
+      \ \ 
+
+      \  # Si tous les conteneurs sont prêts, on sort de la boucle
+
+      \  if [ \"$all_ready\" = true ]; then
+
+      \    echo \"\"
+
+      \    echo \"🎉 Succès ! Tous les conteneurs sont actifs !\"
+
+      \    echo \"⏱️  Temps total d'attente : ${elapsed}s\"
+
+      \    echo \"\"
+
+      \    echo \"📋 Conteneurs actifs :\"
+
+      \    for container in $containers_clean; do
+
+      \      container=$(echo \"$container\" | xargs)
+
+      \      status=$(docker ps --filter \"name={{.STACK_NAME}}_${container}\" --format \"{{.Status}}\")
+
+      \      echo \"  ✅ ${container} - $status\"
+
+      \    done
+
+      \    break
+
+      \  fi
+
+      \ \ 
+
+      \  echo \"\"
+
+      \  sleep {{.CHECK_INTERVAL}}
+
+      done\n"
 
   wait:containers:ready:
     desc: "Attend que les conteneurs spécifiés soient prêts"
