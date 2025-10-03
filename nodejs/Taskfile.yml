@@ -1,9 +1,6 @@
 version: 3
 # Taskfile pour les projets Node.js
 
-includes:
-  deps: ./deps
-
 vars:
   DEV_DEPS: "all-contributors-cli cypress generate-changelog gitmoji-changelog jscpd license-checker markdownlint-cli npm-run-all readme-md-generator semantic-git-commit-cli yaml"
 
@@ -24,3 +21,50 @@ tasks:
     - sh: command -v npm
     cmds:
     - npm init -y
+
+  add-dev-deps:
+    desc: "Ajoute les devDependencies communes si elles ne sont pas déjà présentes"
+    silent: true
+    preconditions:
+    - sh: command -v npm
+      msg: "npm n'est pas installé ou accessible"
+    - sh: "test -f package.json"
+      msg: "Le fichier package.json est requis pour cette tâche"
+    cmds:
+    - |
+      echo "📦 Installation des devDependencies communes..."
+      echo ""
+
+      # Liste directe des packages
+      packages="all-contributors-cli cypress generate-changelog gitmoji-changelog jscpd license-checker markdownlint-cli npm-run-all readme-md-generator semantic-git-commit-cli yaml"
+
+      # Crée la section devDependencies si elle n'existe pas
+      if ! grep -q '"devDependencies"' package.json; then
+        echo "📝 Création de la section devDependencies..."
+        npm pkg set devDependencies='{}'
+      fi
+
+      # Installation des packages
+      added=0
+      skipped=0
+
+      for package_name in $packages; do
+        # Vérifie si le package est déjà dans devDependencies
+        if ! npm pkg get devDependencies | grep -q "\"$package_name\""; then
+          echo "📦 Installation de $package_name..."
+          if npm install --save-dev "$package_name"; then
+            added=$((added + 1))
+          else
+            echo "❌ Erreur lors de l'installation de $package_name"
+          fi
+        else
+          echo "⏭️  $package_name est déjà installé, ignoré."
+          skipped=$((skipped + 1))
+        fi
+      done
+
+      echo ""
+      echo "📊 Résumé :"
+      echo "  ✅ Ajoutées: $added"
+      echo "  ⏭️  Ignorées: $skipped"
+      echo "✅ Installation des devDependencies terminée."
