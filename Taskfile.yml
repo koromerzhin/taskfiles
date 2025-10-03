@@ -9,6 +9,7 @@ includes:
   utils: ./utils/Taskfile.yml
   env: ./env/Taskfile.yml
   nodejs: ./nodejs/Taskfile.yml
+  download: ./download/Taskfile.yml
 
 vars:
   # Variables avec valeurs par défaut depuis .env ou valeurs de fallback
