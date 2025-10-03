@@ -8,7 +8,7 @@ tasks:
     silent: true
     summary: |
       Supprime les fichiers de logs plus anciens que le nombre de jours spécifié.
-      
+
       Variables:
       - DAYS: Nombre de jours à conserver (défaut: 7)
       - LOG_PATTERN: Pattern des fichiers logs (défaut: *.log)
@@ -23,13 +23,13 @@ tasks:
       echo "📁 Pattern: {{.LOG_PATTERN}}"
       echo "📂 Dossiers: {{.DIRS}}"
       echo ""
-      
+
       files_removed=0
       total_size=0
-      
+
       # Conversion des dossiers en tableau
       IFS=',' read -ra dirs <<< "{{.DIRS}}"
-      
+
       for dir in "${dirs[@]}"; do
         if [ ! -d "$dir" ]; then
           echo "⚠️  Dossier '$dir' introuvable, ignoré"
@@ -49,7 +49,7 @@ tasks:
           fi
         done
       done
-      
+
       if [ $files_removed -eq 0 ]; then
         echo "✅ Aucun fichier log ancien trouvé"
       else
@@ -63,7 +63,7 @@ tasks:
     silent: true
     summary: |
       Supprime les fichiers et dossiers temporaires courants.
-      
+
       Variables:
       - TEMP_PATTERNS: Patterns à supprimer (défaut: tmp,temp,*.tmp,*.temp,node_modules/.cache)
       - DRY_RUN: Mode simulation (défaut: false)
@@ -73,20 +73,20 @@ tasks:
     cmds:
     - |
       echo "🧹 Nettoyage des fichiers temporaires..."
-      
+
       if [ "{{.DRY_RUN}}" = "true" ]; then
         echo "🔍 Mode simulation activé (aucune suppression)"
       fi
-      
+
       echo "📋 Patterns: {{.TEMP_PATTERNS}}"
       echo ""
-      
+
       files_removed=0
       total_size=0
-      
+
       # Conversion des patterns en tableau
       IFS=',' read -ra patterns <<< "{{.TEMP_PATTERNS}}"
-      
+
       for pattern in "${patterns[@]}"; do
         echo "🔍 Recherche: $pattern"
         
@@ -130,7 +130,7 @@ tasks:
           fi
         fi
       done
-      
+
       echo ""
       if [ "{{.DRY_RUN}}" = "true" ]; then
         echo "🔍 $files_removed élément(s) seraient supprimés en mode réel"
@@ -145,7 +145,7 @@ tasks:
     silent: true
     summary: |
       Nettoie les caches des outils de développement courants.
-      
+
       Variables:
       - TOOLS: Outils à nettoyer (défaut: npm,yarn,docker,composer)
     vars:
@@ -155,10 +155,10 @@ tasks:
       echo "🧹 Nettoyage des caches de développement..."
       echo "🛠️  Outils: {{.TOOLS}}"
       echo ""
-      
+
       # Conversion des outils en tableau
       IFS=',' read -ra tools <<< "{{.TOOLS}}"
-      
+
       for tool in "${tools[@]}"; do
         echo "🔍 Nettoyage cache: $tool"
         
@@ -196,7 +196,7 @@ tasks:
             ;;
         esac
       done
-      
+
       echo ""
       echo "✅ Nettoyage des caches terminé"
 
@@ -205,7 +205,7 @@ tasks:
     silent: true
     summary: |
       Lance un nettoyage complet : logs anciens, fichiers temporaires et caches.
-      
+
       Variables héritées de chaque sous-tâche.
     cmds:
     - echo "🧹 Nettoyage complet en cours..."

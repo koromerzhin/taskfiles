@@ -9,10 +9,10 @@ tasks:
     summary: |
       Ajoute intelligemment les devDependencies communes sans version spécifique.
       Vérifie l'existence avant installation pour éviter les doublons.
-      
+
       Variables:
       - DEV_DEPS: Liste des dépendances (définie globalement)
-      
+
       Exemple:
       task nodejs:deps:add
     preconditions:
@@ -64,10 +64,10 @@ tasks:
     summary: |
       Force l'installation/mise à jour de toutes les devDependencies communes.
       Installe les dernières versions sans vérification préalable.
-      
+
       Variables:
       - DEV_DEPS: Liste des dépendances (définie globalement)
-      
+
       Exemple:
       task nodejs:deps:add-force
     preconditions:
@@ -98,14 +98,14 @@ tasks:
     silent: true
     summary: |
       Affiche la liste des devDependencies communes et leur statut d'installation.
-      
+
       Variables:
       - DEV_DEPS: Liste des dépendances (définie globalement)
     cmds:
     - |
       echo "📋 DevDependencies communes disponibles :"
       echo ""
-      
+
       # Convertit la variable DEV_DEPS en tableau, en supprimant les espaces vides
       all_deps="{{.DEV_DEPS}}"
       tool_names=()
@@ -114,10 +114,10 @@ tasks:
           tool_names+=("$dep")
         fi
       done
-      
+
       total=${#tool_names[@]}
       installed=0
-      
+
       for package_name in "${tool_names[@]}"; do
         if [ -f package.json ] && npm pkg get devDependencies | grep -q "\"$package_name\""; then
           # Récupère la version installée
@@ -128,10 +128,10 @@ tasks:
           echo "  ❌ $package_name (non installé)"
         fi
       done
-      
+
       echo ""
       echo "📊 $installed/$total dépendances installées"
-      
+
       if [ $installed -lt $total ]; then
         echo ""
         echo "💡 Pour installer les dépendances manquantes :"
@@ -143,7 +143,7 @@ tasks:
     silent: true
     summary: |
       Vérifie les devDependencies communes pour les mises à jour disponibles.
-      
+
       Exemple:
       task nodejs:deps:check
     preconditions:
@@ -155,10 +155,10 @@ tasks:
     - |
       echo "🔍 Vérification des mises à jour disponibles..."
       echo ""
-      
+
       # Convertit la variable DEV_DEPS en tableau
       tool_names=({{.DEV_DEPS}})
-      
+
       outdated=0
       for package_name in "${tool_names[@]}"; do
         if npm pkg get devDependencies | grep -q "\"$package_name\""; then
@@ -175,7 +175,7 @@ tasks:
           echo "  ⚠️  $package_name: non installé"
         fi
       done
-      
+
       echo ""
       if [ $outdated -gt 0 ]; then
         echo "📊 $outdated dépendance(s) peuvent être mises à jour"
@@ -191,11 +191,11 @@ tasks:
     silent: true
     summary: |
       Supprime toutes les devDependencies communes du projet.
-      
+
       Variables:
       - DEV_DEPS: Liste des dépendances (définie globalement)
       - CONFIRM: Confirmer la suppression (défaut: demande confirmation)
-      
+
       Exemple:
       task nodejs:deps:remove
       task nodejs:deps:remove CONFIRM=true
@@ -210,10 +210,10 @@ tasks:
     - |
       echo "🗑️  Suppression des devDependencies communes..."
       echo ""
-      
+
       # Convertit la variable DEV_DEPS en tableau
       tool_names=({{.DEV_DEPS}})
-      
+
       # Liste les dépendances à supprimer
       to_remove=()
       for package_name in "${tool_names[@]}"; do
@@ -222,15 +222,15 @@ tasks:
           echo "  🗑️  $package_name sera supprimé"
         fi
       done
-      
+
       if [ ${#to_remove[@]} -eq 0 ]; then
         echo "✅ Aucune devDependency commune à supprimer"
         exit 0
       fi
-      
+
       echo ""
       echo "📊 ${#to_remove[@]} dépendance(s) seront supprimées"
-      
+
       # Demande de confirmation
       if [ "{{.CONFIRM}}" != "true" ]; then
         echo ""
@@ -241,7 +241,7 @@ tasks:
           exit 0
         fi
       fi
-      
+
       # Suppression
       removed=0
       for package_name in "${to_remove[@]}"; do
@@ -249,7 +249,7 @@ tasks:
         npm uninstall "$package_name"
         removed=$((removed + 1))
       done
-      
+
       echo ""
       echo "📊 Résumé :"
       echo "  🗑️  Supprimées: $removed"

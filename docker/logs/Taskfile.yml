@@ -1,0 +1,135 @@
+version: '3'
+
+# Taskfile pour la gestion des logs Docker
+
+tasks:
+  container:tail:
+    desc: "Affiche les logs d'un conteneur en temps réel"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Affiche les logs d'un conteneur avec horodatage.
+
+      Variables:
+      - CONTAINER_NAME: Nom du conteneur (requis)
+      - LINES: Nombre de lignes à afficher (défaut: 100)
+
+      Exemple:
+      task docker:logs:container:tail CONTAINER_NAME=mon-conteneur
+    vars:
+      LINES: '{{.LINES | default "100"}}'
+    cmds:
+    - |
+      if [ -z "{{.CONTAINER_NAME}}" ]; then
+        echo "❌ CONTAINER_NAME est requis"
+        echo "📋 Conteneurs disponibles :"
+        docker ps --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
+        exit 1
+      fi
+
+      echo "📄 Logs du conteneur '{{.CONTAINER_NAME}}' ({{.LINES}} dernières lignes) :"
+      docker logs --timestamps --tail {{.LINES}} --follow {{.CONTAINER_NAME}}
+
+  container:show:
+    desc: "Affiche les logs d'un conteneur sans suivi en temps réel"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Affiche les logs d'un conteneur sans suivi en temps réel.
+
+      Variables:
+      - CONTAINER_NAME: Nom du conteneur (requis)
+      - LINES: Nombre de lignes à afficher (défaut: 100)
+      - SINCE: Afficher les logs depuis (ex: 1h, 30m, 2d)
+
+      Exemple:
+      task docker:logs:container:show CONTAINER_NAME=mon-conteneur
+      task docker:logs:container:show CONTAINER_NAME=mon-conteneur SINCE=1h
+    vars:
+      LINES: '{{.LINES | default "100"}}'
+      SINCE: '{{.SINCE | default ""}}'
+    cmds:
+    - |
+      if [ -z "{{.CONTAINER_NAME}}" ]; then
+        echo "❌ CONTAINER_NAME est requis"
+        echo "📋 Conteneurs disponibles :"
+        docker ps --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
+        exit 1
+      fi
+
+      echo "📄 Logs du conteneur '{{.CONTAINER_NAME}}' :"
+
+      if [ -n "{{.SINCE}}" ]; then
+        echo "🕒 Depuis: {{.SINCE}}"
+        docker logs --timestamps --since {{.SINCE}} {{.CONTAINER_NAME}}
+      else
+        echo "📏 Dernières {{.LINES}} lignes :"
+        docker logs --timestamps --tail {{.LINES}} {{.CONTAINER_NAME}}
+      fi
+
+  service:tail:
+    desc: "Affiche les logs d'un service Docker Swarm en temps réel"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Affiche les logs d'un service Docker Swarm avec horodatage.
+
+      Variables:
+      - SERVICE_NAME: Nom du service (requis)
+      - LINES: Nombre de lignes à afficher (défaut: 100)
+
+      Exemple:
+      task docker:logs:service:tail SERVICE_NAME=mon-service
+    vars:
+      LINES: '{{.LINES | default "100"}}'
+    cmds:
+    - |
+      if [ -z "{{.SERVICE_NAME}}" ]; then
+        echo "❌ SERVICE_NAME est requis"
+        echo "📋 Services disponibles :"
+        docker service ls --format "table {{{{.Name}}}}\t{{{{.Mode}}}}\t{{{{.Replicas}}}}"
+        exit 1
+      fi
+
+      echo "📄 Logs du service '{{.SERVICE_NAME}}' ({{.LINES}} dernières lignes) :"
+      docker service logs --timestamps --tail {{.LINES}} --follow {{.SERVICE_NAME}}
+
+  all:containers:
+    desc: "Affiche les logs de tous les conteneurs actifs"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Affiche un aperçu des logs de tous les conteneurs actifs.
+
+      Variables:
+      - LINES: Nombre de lignes par conteneur (défaut: 20)
+
+      Exemple:
+      task docker:logs:all:containers
+    vars:
+      LINES: '{{.LINES | default "20"}}'
+    cmds:
+    - |
+      echo "📄 Aperçu des logs de tous les conteneurs actifs :"
+      echo ""
+
+      containers=$(docker ps --format "{{{{.Names}}}}")
+
+      if [ -z "$containers" ]; then
+        echo "❌ Aucun conteneur actif trouvé"
+        exit 0
+      fi
+
+      for container in $containers; do
+        echo "🐳 === $container ==="
+        docker logs --timestamps --tail {{.LINES}} "$container" 2>&1 | head -n {{.LINES}}
+        echo ""
+      done

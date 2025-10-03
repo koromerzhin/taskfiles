@@ -1,0 +1,239 @@
+version: '3'
+
+vars:
+  PHP_TOOLS_NAMES: |
+    phploc.phar
+    php-cs-fixer.phar
+    phpmd.phar
+    phpcbf.phar
+    phpcs.phar
+    phpstan.phar
+    phpDocumentor.phar
+    behat.phar
+  PHP_TOOLS_URLS: |
+    https://phar.phpunit.de/phploc-7.0.2.phar
+    https://github.com/FriendsOfPHP/PHP-CS-Fixer/releases/download/v3.64.0/php-cs-fixer.phar
+    https://github.com/phpmd/phpmd/releases/download/2.15.0/phpmd.phar
+    https://github.com/squizlabs/PHP_CodeSniffer/releases/download/3.7.2/phpcbf.phar
+    https://github.com/squizlabs/PHP_CodeSniffer/releases/download/3.7.2/phpcs.phar
+    https://github.com/phpstan/phpstan/releases/download/1.12.4/phpstan.phar
+    https://github.com/phpDocumentor/phpDocumentor/releases/download/v3.5.3/phpDocumentor.phar
+    https://github.com/Behat/Behat/releases/download/v3.14.0/behat.phar
+
+tasks:
+  tools:
+    desc: "Télécharge les outils PHP dans un dossier spécifique"
+    silent: true
+    summary: |
+      Télécharge une collection d'outils PHP populaires dans un dossier.
+
+      Variables:
+      - TOOLS_DIR: Dossier de destination (défaut: ./tools/php)
+      - FORCE: Force le téléchargement même si le fichier existe (défaut: false)
+
+      Outils téléchargés:
+      - phploc.phar (PHP Lines of Code)
+      - php-cs-fixer.phar (PHP CS Fixer)
+      - phpmd.phar (PHP Mess Detector)
+      - phpcbf.phar (PHP Code Beautifier)
+      - phpcs.phar (PHP Code Sniffer)
+      - phpstan.phar (PHPStan)
+      - phpDocumentor.phar (phpDocumentor)
+      - behat.phar (Behat)
+
+      Exemples:
+      task download:php:tools
+      task download:php:tools TOOLS_DIR=./bin
+      task download:php:tools FORCE=true
+    vars:
+      TOOLS_DIR: '{{.TOOLS_DIR | default "./tools/php"}}'
+      FORCE: '{{.FORCE | default "false"}}'
+    cmds:
+    - |
+      echo "📦 Téléchargement des outils PHP dans '{{.TOOLS_DIR}}'..."
+      echo ""
+
+      # Création du dossier de destination
+      mkdir -p "{{.TOOLS_DIR}}"
+
+      # Récupération des variables et conversion en tableaux
+      tool_names_raw="{{.PHP_TOOLS_NAMES}}"
+      tool_urls_raw="{{.PHP_TOOLS_URLS}}"
+
+      # Conversion en tableaux (compatible bash/zsh)
+      tool_names=()
+      tool_urls=()
+
+      # Lecture ligne par ligne des noms d'outils
+      while IFS= read -r line; do
+        [[ -n "$line" ]] && tool_names+=("$line")
+      done <<< "$tool_names_raw"
+
+      # Lecture ligne par ligne des URLs
+      while IFS= read -r line; do
+        [[ -n "$line" ]] && tool_urls+=("$line")
+      done <<< "$tool_urls_raw"
+
+      # Vérification que les tableaux ont la même taille
+      if [ ${#tool_names[@]} -ne ${#tool_urls[@]} ]; then
+        echo "❌ Erreur: Le nombre de noms d'outils (${#tool_names[@]}) ne correspond pas au nombre d'URLs (${#tool_urls[@]})"
+        exit 1
+      fi
+
+      # Compteurs
+      downloaded=0
+      skipped=0
+      errors=0
+
+      # Téléchargement de chaque outil
+      for i in "${!tool_names[@]}"; do
+        tool="${tool_names[$i]}"
+        url="${tool_urls[$i]}"
+        target_file="{{.TOOLS_DIR}}/$tool"
+        
+        echo -n "⬇️  $tool ... "
+        
+        # Vérifier si le fichier existe déjà
+        if [ -f "$target_file" ] && [ "{{.FORCE}}" != "true" ]; then
+          echo "⏭️  déjà présent"
+          skipped=$((skipped + 1))
+          continue
+        fi
+        
+        # Télécharger le fichier
+        if curl -L -s -o "$target_file" "$url"; then
+          # Vérifier que le téléchargement a réussi
+          if [ -f "$target_file" ] && [ -s "$target_file" ]; then
+            # Rendre le fichier exécutable
+            chmod +x "$target_file"
+            echo "✅ téléchargé"
+            downloaded=$((downloaded + 1))
+          else
+            echo "❌ échec (fichier vide)"
+            rm -f "$target_file"
+            errors=$((errors + 1))
+          fi
+        else
+          echo "❌ échec du téléchargement"
+          rm -f "$target_file"
+          errors=$((errors + 1))
+        fi
+      done
+
+      echo ""
+      echo "📊 Résumé :"
+      echo "  ✅ Téléchargés: $downloaded"
+      echo "  ⏭️  Ignorés: $skipped"
+      echo "  ❌ Erreurs: $errors"
+      echo ""
+
+      if [ $downloaded -gt 0 ]; then
+        echo "📁 Outils disponibles dans '{{.TOOLS_DIR}}' :"
+        ls -la "{{.TOOLS_DIR}}"/*.phar 2>/dev/null | awk '{print "  " $9 " (" $5 " bytes)"}'
+      fi
+
+      if [ $errors -gt 0 ]; then
+        echo ""
+        echo "⚠️  Certains téléchargements ont échoué. Vérifiez votre connexion internet."
+      fi
+
+  update:
+    desc: "Met à jour tous les outils PHP (force le téléchargement)"
+    silent: true
+    summary: |
+      Force la mise à jour de tous les outils PHP même s'ils existent déjà.
+
+      Variables:
+      - TOOLS_DIR: Dossier de destination (défaut: ./tools/php)
+
+      Exemple:
+      task download:php:update
+    vars:
+      TOOLS_DIR: '{{.TOOLS_DIR | default "./tools/php"}}'
+    cmds:
+    - task: tools
+      vars:
+        TOOLS_DIR: '{{.TOOLS_DIR}}'
+        FORCE: "true"
+
+  list:
+    desc: "Liste les outils PHP téléchargés"
+    silent: true
+    summary: |
+      Affiche la liste des outils PHP présents dans le dossier.
+
+      Variables:
+      - TOOLS_DIR: Dossier à vérifier (défaut: ./tools/php)
+    vars:
+      TOOLS_DIR: '{{.TOOLS_DIR | default "./tools/php"}}'
+    cmds:
+    - |
+      if [ ! -d "{{.TOOLS_DIR}}" ]; then
+        echo "❌ Le dossier '{{.TOOLS_DIR}}' n'existe pas"
+        echo "💡 Utilisez 'task download:php:tools' pour télécharger les outils"
+        exit 1
+      fi
+
+      echo "📁 Outils PHP dans '{{.TOOLS_DIR}}' :"
+      echo ""
+
+      # Conversion de la variable en tableau (suppression des retours à la ligne)
+      tool_names_raw="{{.PHP_TOOLS_NAMES}}"
+      tool_names=()
+
+      # Lecture ligne par ligne des noms d'outils
+      while IFS= read -r line; do
+        [[ -n "$line" ]] && tool_names+=("$line")
+      done <<< "$tool_names_raw"
+
+      total_tools=${#tool_names[@]}
+      tools_found=0
+
+      for tool in "${tool_names[@]}"; do
+        if [ -f "{{.TOOLS_DIR}}/$tool" ]; then
+          size=$(ls -lh "{{.TOOLS_DIR}}/$tool" | awk '{print $5}')
+          perms=$(ls -l "{{.TOOLS_DIR}}/$tool" | awk '{print $1}')
+          echo "  ✅ $tool ($size) $perms"
+          tools_found=$((tools_found + 1))
+        else
+          echo "  ❌ $tool (manquant)"
+        fi
+      done
+
+      echo ""
+      echo "📊 $tools_found/$total_tools outils présents"
+
+      if [ $tools_found -lt $total_tools ]; then
+        echo ""
+        echo "💡 Pour télécharger les outils manquants :"
+        echo "   task download:php:tools"
+      fi
+
+  clean:
+    desc: "Supprime tous les outils PHP téléchargés"
+    silent: true
+    summary: |
+      Supprime le dossier contenant les outils PHP.
+
+      Variables:
+      - TOOLS_DIR: Dossier à supprimer (défaut: ./tools/php)
+
+      ⚠️  ATTENTION: Cette action est irréversible !
+    vars:
+      TOOLS_DIR: '{{.TOOLS_DIR | default "./tools/php"}}'
+    cmds:
+    - |
+      if [ ! -d "{{.TOOLS_DIR}}" ]; then
+        echo "❌ Le dossier '{{.TOOLS_DIR}}' n'existe pas"
+        exit 1
+      fi
+
+      echo "🗑️  Suppression du dossier '{{.TOOLS_DIR}}' et de tous les outils..."
+      read -p "Êtes-vous sûr ? [y/N] " -n 1 -r
+      echo
+      if [[ $REPLY =~ ^[Yy]$ ]]; then
+        rm -rf "{{.TOOLS_DIR}}"
+        echo "✅ Dossier supprimé"
+      else
+        echo "❌ Suppression annulée"
+      fi

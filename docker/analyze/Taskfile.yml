@@ -1,0 +1,191 @@
+version: '3'
+
+# Taskfile pour l'analyse et l'historique Docker
+
+tasks:
+  container:lifecycle:
+    desc: "Analyse le cycle de vie d'un conteneur"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Analyse complète du cycle de vie d'un conteneur avec tous les événements.
+
+      Variables:
+      - CONTAINER_NAME: Nom du conteneur (requis)
+
+      Exemple:
+      task docker:analyze:container:lifecycle CONTAINER_NAME=mon-conteneur
+    cmds:
+    - |
+      if [ -z "{{.CONTAINER_NAME}}" ]; then
+        echo "❌ CONTAINER_NAME est requis"
+        echo "📋 Conteneurs disponibles :"
+        docker ps -a --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
+        exit 1
+      fi
+
+      echo "🔬 Analyse du cycle de vie du conteneur '{{.CONTAINER_NAME}}' :"
+      echo ""
+
+      # Informations de base
+      task: info:container:inspect CONTAINER_NAME={{.CONTAINER_NAME}}
+
+      echo ""
+      echo "📊 Historique des événements (si disponible) :"
+      echo "   Note: Les événements Docker sont conservés temporairement"
+
+      # Tentative de récupération des événements récents
+      container_id=$(docker inspect {{.CONTAINER_NAME}} --format "{{{{.Id}}}}" 2>/dev/null || echo "")
+      if [ -n "$container_id" ]; then
+        docker events --since 24h --filter container=$container_id --format "{{{{.Time}}}} - {{{{.Action}}}}" 2>/dev/null || echo "   Aucun événement récent trouvé"
+      fi
+
+  container:performance:
+    desc: "Analyse les performances d'un conteneur"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Analyse les performances et l'utilisation des ressources d'un conteneur.
+
+      Variables:
+      - CONTAINER_NAME: Nom du conteneur (requis)
+      - DURATION: Durée d'observation en secondes (défaut: 10)
+
+      Exemple:
+      task docker:analyze:container:performance CONTAINER_NAME=mon-conteneur
+    vars:
+      DURATION: '{{.DURATION | default "10"}}'
+    cmds:
+    - |
+      if [ -z "{{.CONTAINER_NAME}}" ]; then
+        echo "❌ CONTAINER_NAME est requis"
+        echo "📋 Conteneurs disponibles :"
+        docker ps --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
+        exit 1
+      fi
+
+      echo "📊 Analyse des performances du conteneur '{{.CONTAINER_NAME}}' :"
+      echo "⏱️  Observation pendant {{.DURATION}} secondes..."
+      echo ""
+
+      # Statistiques instantanées
+      echo "📈 Statistiques instantanées :"
+      docker stats --no-stream {{.CONTAINER_NAME}}
+
+      echo ""
+      echo "🔄 Observation en temps réel ({{.DURATION}}s) :"
+      timeout {{.DURATION}} docker stats {{.CONTAINER_NAME}} || echo "✅ Observation terminée"
+
+  history:containers:
+    desc: "Affiche l'historique des conteneurs (y compris arrêtés)"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Affiche tous les conteneurs (actifs et arrêtés) avec leurs informations de démarrage.
+
+      Variables:
+      - IMAGE_NAME: Filtrer par image (optionnel)
+      - STATUS: Filtrer par statut (running, exited, etc.)
+    vars:
+      STATUS: '{{.STATUS | default ""}}'
+    cmds:
+    - |
+      echo "📜 Historique de tous les conteneurs :"
+      echo ""
+
+      filter_opts=""
+      if [ -n "{{.IMAGE_NAME}}" ]; then
+        echo "🎯 Filtrage pour l'image: {{.IMAGE_NAME}}"
+        filter_opts="--filter ancestor={{.IMAGE_NAME}}"
+      fi
+
+      if [ -n "{{.STATUS}}" ]; then
+        echo "🎯 Filtrage pour le statut: {{.STATUS}}"
+        filter_opts="$filter_opts --filter status={{.STATUS}}"
+      fi
+
+      docker ps -a $filter_opts --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}\t{{{{.CreatedAt}}}}"
+
+  system:overview:
+    desc: "Analyse globale du système Docker"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Analyse complète du système Docker : images, conteneurs, volumes, réseaux.
+
+      Exemple:
+      task docker:analyze:system:overview
+    cmds:
+    - |
+      echo "🐳 Analyse globale du système Docker :"
+      echo ""
+
+      echo "📊 Informations système :"
+      docker system df
+
+      echo ""
+      echo "🏃‍♂️ Conteneurs actifs :"
+      docker ps --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}\t{{{{.Ports}}}}"
+
+      echo ""
+      echo "💾 Images locales :"
+      docker images --format "table {{{{.Repository}}}}\t{{{{.Tag}}}}\t{{{{.Size}}}}\t{{{{.CreatedAt}}}}"
+
+      echo ""
+      echo "🔗 Réseaux :"
+      docker network ls
+
+      echo ""
+      echo "📁 Volumes :"
+      docker volume ls
+
+      echo ""
+      echo "⚠️  Ressources inutilisées :"
+      docker system df | grep -E "(TYPE|<none>|Total reclaimed)"
+
+  image:layers:
+    desc: "Analyse les couches d'une image Docker"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Analyse la structure en couches d'une image Docker.
+
+      Variables:
+      - IMAGE_NAME: Nom de l'image (requis)
+
+      Exemple:
+      task docker:analyze:image:layers IMAGE_NAME=nginx:latest
+    cmds:
+    - |
+      if [ -z "{{.IMAGE_NAME}}" ]; then
+        echo "❌ IMAGE_NAME est requis"
+        echo "📋 Images disponibles :"
+        docker images --format "table {{{{.Repository}}}}\t{{{{.Tag}}}}\t{{{{.Size}}}}"
+        exit 1
+      fi
+
+      echo "🔬 Analyse des couches de l'image '{{.IMAGE_NAME}}' :"
+      echo ""
+
+      echo "📋 Informations de base :"
+      docker inspect {{.IMAGE_NAME}} --format "{{{{json .}}}" | jq -r '
+        "ID: " + .Id,
+        "Taille: " + (.Size | tostring) + " bytes",
+        "Architecture: " + .Architecture,
+        "OS: " + .Os,
+        "Créé: " + .Created
+      ' 2>/dev/null || docker inspect {{.IMAGE_NAME}}
+
+      echo ""
+      echo "📚 Historique des couches :"
+      docker history {{.IMAGE_NAME}}

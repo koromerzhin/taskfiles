@@ -7,99 +7,37 @@ includes:
   monitor: ./monitor/Taskfile.yml
   network: ./network/Taskfile.yml
   stack: ./stack/Taskfile.yml
+  logs: ./logs/Taskfile.yml
+  analyze: ./analyze/Taskfile.yml
 
 vars:
   CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
   IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
 
 tasks:
-  logs:container:tail:
-    desc: "Affiche les logs d'un conteneur en temps réel"
+  # Aliases pour compatibilité avec les anciennes commandes
+  logs-container-tail:
+    desc: "Affiche les logs d'un conteneur en temps réel (alias)"
     silent: true
-    preconditions:
-    - sh: command -v docker
-      msg: "Docker n'est pas installé ou accessible"
-    summary: |
-      Affiche les logs d'un conteneur avec horodatage.
-
-      Variables:
-      - CONTAINER_NAME: Nom du conteneur (requis)
-      - LINES: Nombre de lignes à afficher (défaut: 100)
-
-      Exemple:
-      task docker:logs:container:tail CONTAINER_NAME=mon-conteneur
-    vars:
-      LINES: '{{.LINES | default "100"}}'
     cmds:
-    - |
-      if [ -z "{{.CONTAINER_NAME}}" ]; then
-        echo "❌ CONTAINER_NAME est requis"
-        echo "📋 Conteneurs disponibles :"
-        docker ps --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
-        exit 1
-      fi
+    - task: logs:container:tail
+      vars:
+        CONTAINER_NAME: '{{.CONTAINER_NAME}}'
+        LINES: '{{.LINES | default "100"}}'
 
-      echo "📄 Logs du conteneur '{{.CONTAINER_NAME}}' ({{.LINES}} dernières lignes) :"
-      docker logs --timestamps --tail {{.LINES}} --follow {{.CONTAINER_NAME}}
-
-  history:containers:
-    desc: "Affiche l'historique des conteneurs (y compris arrêtés)"
+  history-containers:
+    desc: "Affiche l'historique des conteneurs (alias)"
     silent: true
-    preconditions:
-    - sh: command -v docker
-      msg: "Docker n'est pas installé ou accessible"
-    summary: |
-      Affiche tous les conteneurs (actifs et arrêtés) avec leurs informations de démarrage.
-
-      Variables:
-      - IMAGE_NAME: Filtrer par image (optionnel)
     cmds:
-    - |
-      echo "📜 Historique de tous les conteneurs :"
-      echo ""
+    - task: analyze:history:containers
+      vars:
+        IMAGE_NAME: '{{.IMAGE_NAME}}'
+        STATUS: '{{.STATUS}}'
 
-      if [ -n "{{.IMAGE_NAME}}" ]; then
-        echo "🎯 Filtrage pour l'image: {{.IMAGE_NAME}}"
-        docker ps -a --filter ancestor={{.IMAGE_NAME}} --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}\t{{{{.CreatedAt}}}}"
-      else
-        docker ps -a --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}\t{{{{.CreatedAt}}}}"
-      fi
-
-  analyze:container:lifecycle:
-    desc: "Analyse le cycle de vie d'un conteneur"
+  analyze-container-lifecycle:
+    desc: "Analyse le cycle de vie d'un conteneur (alias)"
     silent: true
-    preconditions:
-    - sh: command -v docker
-      msg: "Docker n'est pas installé ou accessible"
-    summary: |
-      Analyse complète du cycle de vie d'un conteneur avec tous les événements.
-
-      Variables:
-      - CONTAINER_NAME: Nom du conteneur (requis)
-
-      Exemple:
-      task docker:analyze:container:lifecycle CONTAINER_NAME=mon-conteneur
     cmds:
-    - |
-      if [ -z "{{.CONTAINER_NAME}}" ]; then
-        echo "❌ CONTAINER_NAME est requis"
-        echo "📋 Conteneurs disponibles :"
-        docker ps -a --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
-        exit 1
-      fi
-
-      echo "🔬 Analyse du cycle de vie du conteneur '{{.CONTAINER_NAME}}' :"
-      echo ""
-
-      # Informations de base
-      task: info:container:inspect
-
-      echo ""
-      echo "📊 Historique des événements (si disponible) :"
-      echo "   Note: Les événements Docker sont conservés temporairement"
-
-      # Tentative de récupération des événements récents
-      container_id=$(docker inspect {{.CONTAINER_NAME}} --format "{{{{.Id}}}}" 2>/dev/null || echo "")
-      if [ -n "$container_id" ]; then
-        docker events --since 24h --filter container=$container_id --format "{{{{.Time}}}} - {{{{.Action}}}}" 2>/dev/null || echo "   Aucun événement récent trouvé"
-      fi
+    - task: analyze:container:lifecycle
+      vars:
+        CONTAINER_NAME: '{{.CONTAINER_NAME}}'

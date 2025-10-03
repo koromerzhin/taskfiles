@@ -36,142 +36,42 @@ tasks:
     - echo "  • swarm     - Gestion du cluster Swarm"
     - echo "  • network   - Gestion des réseaux"
     - echo "  • images    - Gestion des images"
+    - echo "  • logs      - Gestion des logs conteneurs/services"
+    - echo "  • analyze   - Analyse et historique"
+    - echo ""
+    - echo "📋 Sous-namespaces :"
+    - echo "  • logs     - Gestion centralisée des logs"
+    - echo "  • analyze  - Analyse et diagnostics avancés"
     - echo ""
     - echo "🔍 Tâches disponibles :"
     - task docker --list-all
-
-  nodejs:
-    desc: "Aide pour le namespace nodejs"
-    silent: true
-    summary: |
-      Affiche l'aide pour la gestion des projets Node.js.
-      Couvre l'installation de dépendances et la configuration.
-    cmds:
-    - echo "📦 Namespace Node.js - Gestion des projets Node.js"
-    - echo ""
-    - echo "🎯 Fonctionnalités principales :"
-    - echo "  • Initialisation de projets"
-    - echo "  • Installation de dépendances"
-    - echo "  • Ajout automatique de devDependencies communes"
-    - echo ""
-    - echo "🔍 Tâches disponibles :"
-    - task nodejs --list-all
-
-  env:
-    desc: "Aide pour le namespace env"
-    silent: true
-    summary: |
-      Affiche l'aide pour la gestion des variables d'environnement.
-      Couvre l'initialisation, validation et sauvegarde des fichiers .env.
-    cmds:
-    - echo "⚙️  Namespace ENV - Gestion des variables d'environnement"
-    - echo ""
-    - echo "🎯 Fonctionnalités principales :"
-    - echo "  • Initialisation de fichiers .env"
-    - echo "  • Validation de configuration"
-    - echo "  • Affichage formaté du contenu"
-    - echo "  • Sauvegarde et historique"
-    - echo ""
-    - echo "🔍 Tâches disponibles :"
-    - task env --list-all
 
   download:
     desc: "Aide pour le namespace download"
     silent: true
     summary: |
       Affiche l'aide pour le téléchargement d'outils de développement.
-      Couvre principalement les outils PHP mais extensible à d'autres langages.
+      Couvre les outils PHP et Python avec gestion automatisée.
     cmds:
     - echo "⬇️  Namespace Download - Téléchargement d'outils"
     - echo ""
-    - echo "🎯 Outils disponibles :"
-    - echo "  • PHP - Collection d'outils de qualité et analyse"
+    - echo "🎯 Langages disponibles :"
+    - echo "  • PHP    - Collection d'outils de qualité et analyse"
+    - echo "  • Python - Outils de développement et linting"
     - echo ""
-    - echo "🔧 Outils PHP inclus :"
-    - echo "  • phploc.phar (PHP Lines of Code)"
-    - echo "  • php-cs-fixer.phar (PHP CS Fixer)"
-    - echo "  • phpmd.phar (PHP Mess Detector)"
-    - echo "  • phpcbf.phar (PHP Code Beautifier)"
-    - echo "  • phpcs.phar (PHP Code Sniffer)"
-    - echo "  • phpstan.phar (PHPStan)"
-    - echo "  • phpDocumentor.phar"
-    - echo "  • behat.phar (Behat)"
+    - echo "📋 Sous-namespaces :"
+    - echo "  • php    - Gestion des outils PHP (.phar)"
+    - echo "  • python - Gestion des outils Python (pip)"
+    - echo ""
+    - echo "🔧 Exemples d'utilisation :"
+    - echo "  • task download:php:tools    - Télécharge tous les outils PHP"
+    - echo "  • task download:php:list     - Liste les outils PHP"
+    - echo "  • task download:python:tools - Installe tous les outils Python"
+    - echo "  • task download:python:list  - Liste les outils Python"
+    - echo ""
+    - echo "🔗 Aliases de compatibilité :"
+    - echo "  • task download:php-tools (utilise php:tools)"
+    - echo "  • task download:python-tools (utilise python:tools)"
     - echo ""
     - echo "🔍 Tâches disponibles :"
     - task download --list-all
-
-  utils:
-    desc: "Aide pour le namespace utils"
-    silent: true
-    summary: |
-      Affiche l'aide pour les utilitaires généraux.
-      Couvre les sauvegardes, nettoyage, informations système, etc.
-    cmds:
-    - echo "🔧 Namespace Utils - Utilitaires divers"
-    - echo ""
-    - echo "🎯 Fonctionnalités principales :"
-    - echo "  • Sauvegarde de projets"
-    - echo "  • Nettoyage de fichiers temporaires"
-    - echo "  • Informations système"
-    - echo "  • Maintenance générale"
-    - echo ""
-    - echo "🔍 Tâches disponibles :"
-    - task utils --list-all
-
-  all:
-    desc: "Affiche l'aide complète pour tous les namespaces"
-    silent: true
-    summary: |
-      Affiche l'aide détaillée pour tous les namespaces disponibles.
-      Utile pour avoir une vue d'ensemble complète du projet.
-    cmds:
-    - echo "📚 Aide complète - Tous les namespaces"
-    - echo ""
-    - task: help:docker
-    - echo ""
-    - echo "────────────────────────────────────────"
-    - echo ""
-    - task: help:nodejs
-    - echo ""
-    - echo "────────────────────────────────────────"
-    - echo ""
-    - task: help:env
-    - echo ""
-    - echo "────────────────────────────────────────"
-    - echo ""
-    - task: help:download
-    - echo ""
-    - echo "────────────────────────────────────────"
-    - echo ""
-    - task: help:utils
-
-  quick:
-    desc: "Guide de démarrage rapide"
-    silent: true
-    summary: |
-      Affiche un guide de démarrage rapide avec les commandes essentielles.
-    cmds:
-    - |
-      echo "🚀 Guide de démarrage rapide"
-      echo ""
-      echo "1️⃣  Initialisation :"
-      echo "   task env:init         # Crée le fichier .env"
-      echo "   task validate         # Valide la configuration"
-      echo ""
-      echo "2️⃣  Projets Node.js :"
-      echo "   task nodejs:init      # Initialise le projet"
-      echo "   task nodejs:add-dev-deps  # Ajoute les devDependencies"
-      echo ""
-      echo "3️⃣  Docker :"
-      echo "   task docker:info:containers:running  # Liste les conteneurs"
-      echo "   task docker:monitor:events           # Surveille les événements"
-      echo ""
-      echo "4️⃣  Outils PHP :"
-      echo "   task download:php:tools     # Télécharge les outils"
-      echo "   task download:php:tools:list # Liste les outils installés"
-      echo ""
-      echo "5️⃣  Utilitaires :"
-      echo "   task utils:system:info      # Infos système"
-      echo "   task utils:backup:create    # Sauvegarde du projet"
-      echo ""
-      echo "📖 Pour plus d'informations, utilisez task help:namespace"

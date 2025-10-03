@@ -18,7 +18,7 @@ tasks:
       echo "📂 Répertoire: $(pwd)"
       echo "🕒 Date: $(date)"
       echo ""
-      
+
       echo "🛠️  Outils disponibles :"
       for tool in docker node npm git task; do
         if command -v "$tool" >/dev/null 2>&1; then
@@ -38,7 +38,7 @@ tasks:
     - |
       echo "📊 Utilisation des ressources :"
       echo ""
-      
+
       # CPU
       if command -v top >/dev/null 2>&1; then
         echo "🔥 CPU :"
@@ -46,9 +46,9 @@ tasks:
         top -bn1 | grep "Cpu(s)" | head -n1 | awk '{print "  Utilisation: " $2}' 2>/dev/null || \
         echo "  Informations CPU non disponibles"
       fi
-      
+
       echo ""
-      
+
       # Mémoire
       echo "💾 Mémoire :"
       if command -v free >/dev/null 2>&1; then
@@ -59,9 +59,9 @@ tasks:
       else
         echo "  Informations mémoire non disponibles"
       fi
-      
+
       echo ""
-      
+
       # Disque
       echo "💽 Espace disque :"
       if command -v df >/dev/null 2>&1; then
@@ -80,7 +80,7 @@ tasks:
     - |
       echo "🌐 Informations réseau :"
       echo ""
-      
+
       # IP locale
       echo "📍 Adresses IP :"
       if command -v ip >/dev/null 2>&1; then
@@ -90,9 +90,9 @@ tasks:
       else
         echo "  Commandes réseau non disponibles"
       fi
-      
+
       echo ""
-      
+
       # Test de connectivité
       echo "🔗 Test de connectivité :"
       if ping -c 1 8.8.8.8 >/dev/null 2>&1; then
@@ -100,7 +100,7 @@ tasks:
       else
         echo "  ❌ Internet: Non accessible"
       fi
-      
+
       if ping -c 1 github.com >/dev/null 2>&1; then
         echo "  ✅ GitHub: Accessible"
       else
@@ -116,7 +116,7 @@ tasks:
     - |
       echo "⚡ Métriques de performance :"
       echo ""
-      
+
       # Uptime
       echo "⏱️  Temps de fonctionnement :"
       if command -v uptime >/dev/null 2>&1; then
@@ -124,9 +124,9 @@ tasks:
       else
         echo "  Information non disponible"
       fi
-      
+
       echo ""
-      
+
       # Charge système
       echo "📈 Charge système :"
       if [ -f /proc/loadavg ]; then
@@ -138,9 +138,9 @@ tasks:
       else
         echo "  Load average non disponible"
       fi
-      
+
       echo ""
-      
+
       # Processus les plus consommateurs
       echo "🔝 Top processus (CPU) :"
       if command -v ps >/dev/null 2>&1; then
@@ -158,7 +158,7 @@ tasks:
     - |
       echo "🌍 Variables d'environnement :"
       echo ""
-      
+
       # Variables importantes
       important_vars=(
         "PATH"
@@ -172,7 +172,7 @@ tasks:
         "PROJECT_NAME"
         "ENVIRONMENT"
       )
-      
+
       for var in "${important_vars[@]}"; do
         value=$(printenv "$var" 2>/dev/null || echo "non définie")
         if [ "$value" != "non définie" ]; then
