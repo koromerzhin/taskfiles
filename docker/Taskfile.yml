@@ -14,30 +14,10 @@ vars:
   CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
   IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
 
-tasks:
-  # Aliases pour compatibilité avec les anciennes commandes
-  logs-container-tail:
-    desc: "Affiche les logs d'un conteneur en temps réel (alias)"
-    silent: true
-    cmds:
-    - task: logs:container:tail
-      vars:
-        CONTAINER_NAME: '{{.CONTAINER_NAME}}'
-        LINES: '{{.LINES | default "100"}}'
+# Toutes les commandes sont maintenant organisées dans les sous-namespaces
+# Utilisez les commandes via :
+# - task logs:container:tail
+# - task analyze:history:containers  
+# - task analyze:container:lifecycle
 
-  history-containers:
-    desc: "Affiche l'historique des conteneurs (alias)"
-    silent: true
-    cmds:
-    - task: analyze:history:containers
-      vars:
-        IMAGE_NAME: '{{.IMAGE_NAME}}'
-        STATUS: '{{.STATUS}}'
-
-  analyze-container-lifecycle:
-    desc: "Analyse le cycle de vie d'un conteneur (alias)"
-    silent: true
-    cmds:
-    - task: analyze:container:lifecycle
-      vars:
-        CONTAINER_NAME: '{{.CONTAINER_NAME}}'
+# Pas de tâches directes dans ce namespace, utilisez les includes

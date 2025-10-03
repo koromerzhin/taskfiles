@@ -2,6 +2,11 @@ version: '3'
 
 # Taskfile pour le monitoring Docker - Surveillance et diagnostics
 
+includes:
+  container:
+    taskfile: ./container/Taskfile.yml
+    dir: ./container
+
 vars:
   IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
   CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
@@ -12,35 +17,6 @@ vars:
   LOG_LEVEL: '{{.LOG_LEVEL | default "INFO"}}'
 
 tasks:
-  container:start:
-    desc: "Surveille le lancement de conteneurs en temps réel"
-    silent: true
-    preconditions:
-    - sh: command -v docker
-      msg: "Docker n'est pas installé ou accessible"
-    summary: |
-      Surveille les événements Docker pour détecter le lancement de conteneurs.
-      Affiche quand une image est lancée avec l'horodatage.
-
-      Variables:
-      - IMAGE_NAME: Filtrer par nom d'image spécifique (optionnel)
-
-      Exemples:
-      task docker:monitor:container:start
-      task docker:monitor:container:start IMAGE_NAME=nginx
-    cmds:
-    - |
-      echo "🔍 Surveillance des lancements de conteneurs en temps réel..."
-      echo "   Appuyez sur Ctrl+C pour arrêter"
-      echo ""
-
-      if [ -n "{{.IMAGE_NAME}}" ]; then
-        echo "🎯 Filtrage pour l'image: {{.IMAGE_NAME}}"
-        docker events --filter container --filter event=start --filter image={{.IMAGE_NAME}} --format "{{{{.TimeNano}}}} - 🚀 Container {{{{.Actor.Attributes.name}}}} ({{{{.Actor.Attributes.image}}}}) started"
-      else
-        docker events --filter container --filter event=start --format "{{{{.TimeNano}}}} - 🚀 Container {{{{.Actor.Attributes.name}}}} ({{{{.Actor.Attributes.image}}}}) started"
-      fi
-
   events:
     desc: "Surveille tous les événements Docker"
     silent: true
@@ -78,70 +54,6 @@ tasks:
 
       echo ""
       docker events $filters --format "{{{{.Time}}}} - {{{{.Action}}}} - {{{{.Actor.Attributes.name}}}} ({{{{.Actor.Attributes.image}}}})"
-
-  container:status:
-    desc: "Vérifie le statut d'un conteneur spécifique"
-    silent: true
-    preconditions:
-    - sh: command -v docker
-      msg: "Docker n'est pas installé ou accessible"
-    summary: |
-      Affiche le statut détaillé d'un conteneur.
-
-      Variables:
-      - CONTAINER_NAME: Nom du conteneur (requis)
-
-      Exemple:
-      task docker:monitor:container:status CONTAINER_NAME=mon-conteneur
-    cmds:
-    - |
-      if [ -z "{{.CONTAINER_NAME}}" ]; then
-        echo "❌ CONTAINER_NAME est requis"
-        echo "📋 Conteneurs disponibles :"
-        docker ps -a --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
-        exit 1
-      fi
-
-      echo "🔍 Statut du conteneur '{{.CONTAINER_NAME}}' :"
-      echo ""
-
-      # Vérifier si le conteneur existe
-      if ! docker ps -a --filter "name={{.CONTAINER_NAME}}" --format "{{{{.Names}}}}" | grep -q "^{{.CONTAINER_NAME}}$"; then
-        echo "❌ Le conteneur '{{.CONTAINER_NAME}}' n'existe pas"
-        exit 1
-      fi
-
-      # Informations de base
-      echo "📊 Informations générales :"
-      docker ps -a --filter "name={{.CONTAINER_NAME}}" --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}\t{{{{.Ports}}}}"
-
-      echo ""
-      echo "🏥 État de santé :"
-      health_status=$(docker inspect {{.CONTAINER_NAME}} --format='{{{{.State.Health.Status}}}}' 2>/dev/null || echo "no-healthcheck")
-
-      case $health_status in
-        "healthy")
-          echo "  ✅ Sain"
-          ;;
-        "unhealthy")
-          echo "  ❌ Non sain"
-          echo "  📋 Derniers checks :"
-          docker inspect {{.CONTAINER_NAME}} --format='{{{{range .State.Health.Log}}}}{{{{.Start}}}} - {{{{.ExitCode}}}} - {{{{.Output}}}}{{{{end}}}}' | tail -5
-          ;;
-        "starting")
-          echo "  🟡 Démarrage en cours"
-          ;;
-        "no-healthcheck")
-          echo "  ℹ️  Pas de healthcheck configuré"
-          ;;
-        *)
-          echo "  ❓ État inconnu ($health_status)"
-          ;;
-      esac
-
-      echo ""
-      echo "💾 Utilisation des ressources :"
-      docker stats {{.CONTAINER_NAME}} --no-stream --format "table {{{{.Container}}}}\t{{{{.CPUPerc}}}}\t{{{{.MemUsage}}}}\t{{{{.NetIO}}}}\t{{{{.BlockIO}}}}"
 
   stack:health:
     desc: "Vérifie la santé globale d'une stack Docker"
@@ -192,65 +104,6 @@ tasks:
         echo "  🔍 Services problématiques :"
         docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "table {{{{.Name}}}}\t{{{{.CurrentState}}}}" | grep -v "Running"
       fi
-
-  containers:batch:status:
-    desc: "Vérifie le statut de plusieurs conteneurs"
-    silent: true
-    preconditions:
-    - sh: command -v docker
-      msg: "Docker n'est pas installé ou accessible"
-    summary: |
-      Vérifie le statut de plusieurs conteneurs d'une liste.
-
-      Variables:
-      - CONTAINERS: Liste des conteneurs séparés par des virgules (requis)
-      - STACK_NAME: Nom de la stack pour préfixer les noms (optionnel)
-
-      Exemple:
-      task docker:monitor:containers:batch:status CONTAINERS="traefik,portainer,app" STACK_NAME=production
-    cmds:
-    - |
-      if [ -z "{{.CONTAINERS}}" ]; then
-        echo "❌ CONTAINERS est requis (ex: 'traefik,portainer,app')"
-        exit 1
-      fi
-
-      echo "📊 Statut des conteneurs : {{.CONTAINERS}}"
-      echo ""
-
-      # Convertir la liste en tableau
-      IFS=',' read -ra CONTAINER_ARRAY <<< "{{.CONTAINERS}}"
-
-      for container in "${CONTAINER_ARRAY[@]}"; do
-        container=$(echo "$container" | xargs)  # Trim whitespace
-        
-        if [ -n "{{.STACK_NAME}}" ]; then
-          full_name="{{.STACK_NAME}}_${container}"
-        else
-          full_name="$container"
-        fi
-        
-        echo "🔍 $container :"
-        
-        # Vérifier si le conteneur existe et est en cours d'exécution
-        if docker ps --filter "name=$full_name" --format "{{{{.Names}}}}" | grep -q "$full_name"; then
-          status=$(docker ps --filter "name=$full_name" --format "{{{{.Status}}}}")
-          echo "  ✅ Actif - $status"
-          
-          # Vérifier l'état de santé si disponible
-          health_status=$(docker inspect "$full_name" --format='{{{{.State.Health.Status}}}}' 2>/dev/null || echo "no-healthcheck")
-          if [ "$health_status" != "no-healthcheck" ]; then
-            case $health_status in
-              "healthy") echo "  🏥 Sain" ;;
-              "unhealthy") echo "  🚨 Non sain" ;;
-              "starting") echo "  🟡 Vérification de santé en cours" ;;
-            esac
-          fi
-        else
-          echo "  ❌ Non actif ou inexistant"
-        fi
-        echo ""
-      done
 
   wait:stack:ready:
     desc: "Attend qu'une stack soit complètement déployée"

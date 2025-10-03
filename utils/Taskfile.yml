@@ -11,28 +11,10 @@ vars:
   BACKUP_DIR: '{{.BACKUP_DIR | default "./backups"}}'
   LOG_LEVEL: '{{.LOG_LEVEL | default "INFO"}}'
 
-tasks:
-  # Aliases pour compatibilité avec les anciennes commandes
-  backup-create:
-    desc: "Crée une sauvegarde horodatée du projet (alias)"
-    silent: true
-    cmds:
-    - task: backup:create
+# Toutes les commandes sont maintenant organisées dans les sous-namespaces
+# Utilisez les commandes via :
+# - task backup:create, backup:list
+# - task clean:logs
+# - task system:info
 
-  backup-list:
-    desc: "Liste les sauvegardes disponibles (alias)"
-    silent: true
-    cmds:
-    - task: backup:list
-
-  clean-logs:
-    desc: "Nettoie les fichiers de logs anciens (alias)"
-    silent: true
-    cmds:
-    - task: clean:logs
-
-  system-info:
-    desc: "Affiche les informations système (alias)"
-    silent: true
-    cmds:
-    - task: system:info
+# Pas de tâches directes dans ce namespace, utilisez les includes

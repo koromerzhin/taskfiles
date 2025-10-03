@@ -5,4 +5,11 @@ includes:
     taskfile: ./php/Taskfile.yml
     dir: ./php
 
-tasks:
+# Toutes les commandes PHP sont maintenant organisées dans le sous-namespace php
+# Utilisez les commandes via :
+# - task php:tools
+# - task php:update  
+# - task php:list
+# - task php:clean
+
+# Pas de tâches directes dans ce namespace, utilisez l'include php
