@@ -497,9 +497,7 @@ tasks:
       docker_options=""
       if [ "{{.INTERACTIVE}}" = "true" ]; then
         docker_options="-it"
-      fi
-
-      # Exécuter la commande
+      fi      # Exécuter la commande
       docker exec $docker_options $container_id {{.COMMAND}}
 
   shell:
@@ -619,9 +617,7 @@ tasks:
       fi
 
       # Préparer les options pour docker exec
-      docker_options="-it"
-
-      # Ajouter l'utilisateur si spécifié
+      docker_options="-it"  # Par défaut interactif pour shell      # Ajouter l'utilisateur si spécifié
       if [ -n "{{.EXEC_USER}}" ]; then
         docker_options="$docker_options --user {{.EXEC_USER}}"
         echo "👤 Utilisateur : {{.EXEC_USER}}"
