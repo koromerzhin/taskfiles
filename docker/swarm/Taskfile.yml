@@ -1,17 +1,13 @@
 version: '3'
 
-# Taskfile pour Docker et Docker Compose
-
-vars:
-  # Variables pour Docker Swarm avec valeurs par défaut
-  SWARM_DEFAULT_ADDR_POOL: '{{.SWARM_DEFAULT_ADDR_POOL | default "10.20.0.0/16"}}'
-  SWARM_ADVERTISE_ADDR: '{{.SWARM_ADVERTISE_ADDR | default ""}}'
-  SWARM_LISTEN_ADDR: '{{.SWARM_LISTEN_ADDR | default ""}}'
-
 tasks:
   init:
     desc: "Initialise Docker Swarm avec options configurables"
     silent: true
+    vars:
+      SWARM_DEFAULT_ADDR_POOL: '{{.SWARM_DEFAULT_ADDR_POOL | default "10.20.0.0/16"}}'
+      SWARM_ADVERTISE_ADDR: '{{.SWARM_ADVERTISE_ADDR | default ""}}'
+      SWARM_LISTEN_ADDR: '{{.SWARM_LISTEN_ADDR | default ""}}'
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
@@ -60,6 +56,9 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    vars:
+      SWARM_DEFAULT_ADDR_POOL: '{{.SWARM_DEFAULT_ADDR_POOL | default "10.20.0.0/16"}}'
+      SWARM_ADVERTISE_ADDR: '{{.SWARM_ADVERTISE_ADDR | default ""}}'
     cmds:
     - docker swarm init --default-addr-pool {{.SWARM_DEFAULT_ADDR_POOL}} --advertise-addr {{.SWARM_ADVERTISE_ADDR}}
 

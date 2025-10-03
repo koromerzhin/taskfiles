@@ -1,9 +1,5 @@
 version: '3'
 
-vars:
-  CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
-  IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
-
 tasks:
   info:containers:running:
     desc: "Liste les conteneurs en cours d'exécution avec leurs heures de démarrage"
@@ -16,6 +12,8 @@ tasks:
 
       Variables:
       - IMAGE_NAME: Filtrer par image (optionnel)
+    vars:
+      IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
     cmds:
     - |
       echo "📋 Conteneurs en cours d'exécution :"
@@ -34,6 +32,8 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    vars:
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
     summary: |
       Affiche les informations détaillées d'un conteneur, incluant les heures de création et démarrage.
 
@@ -86,6 +86,8 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    vars:
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
     summary: |
       Affiche les statistiques de performance d'un conteneur en temps réel.
 

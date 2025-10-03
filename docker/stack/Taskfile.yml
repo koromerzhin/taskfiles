@@ -1,10 +1,5 @@
 version: '3'
 
-vars:
-  STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
-  COMPOSE_FILE: '{{.COMPOSE_FILE | default "docker-compose.yml"}}'
-  SWARM_COMPOSE_FILE: '{{.SWARM_COMPOSE_FILE | default "docker-stack.yml"}}'
-
 tasks:
   deploy:
     desc: "Déploie une stack Docker Swarm"
@@ -12,6 +7,9 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    vars:
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
+      COMPOSE_FILE: '{{.COMPOSE_FILE | default "docker-compose.yml"}}'
     summary: |
       Déploie une stack Docker en utilisant docker stack deploy.
 
@@ -42,6 +40,9 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    vars:
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
+      COMPOSE_FILE: '{{.COMPOSE_FILE | default "docker-compose.yml"}}'
     summary: |
       Construit les images puis déploie la stack Docker Swarm.
 
@@ -68,6 +69,9 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    vars:
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
+      COMPOSE_FILE: '{{.COMPOSE_FILE | default "docker-compose.yml"}}'
     summary: |
       Met à jour une stack Docker Swarm existante.
       Équivalent à docker stack deploy mais avec des messages spécifiques à la mise à jour.
@@ -94,6 +98,8 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    vars:
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
     summary: |
       Supprime complètement une stack Docker Swarm.
 
@@ -129,6 +135,8 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    vars:
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
     summary: |
       Affiche tous les services d'une stack spécifique.
 
@@ -149,6 +157,8 @@ tasks:
   ps:
     desc: "Affiche les tâches/conteneurs d'une stack"
     silent: true
+    vars:
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
@@ -172,6 +182,9 @@ tasks:
   logs:
     desc: "Affiche les logs d'un service de la stack"
     silent: true
+    vars:
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
+      SERVICE_NAME: '{{.SERVICE_NAME | default ""}}'
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
@@ -199,6 +212,8 @@ tasks:
   validate:
     desc: "Valide un fichier docker-compose pour Docker Swarm"
     silent: true
+    vars:
+      COMPOSE_FILE: '{{.COMPOSE_FILE | default "docker-compose.yml"}}'
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
@@ -239,6 +254,8 @@ tasks:
     vars:
       TIMEOUT: '{{.TIMEOUT | default "300"}}'
       CHECK_INTERVAL: '{{.CHECK_INTERVAL | default "10"}}'
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
+      CONTAINERS: '{{.CONTAINERS | default ""}}'
     cmds:
     - |
       if [ -z "{{.CONTAINERS}}" ]; then
@@ -341,6 +358,8 @@ tasks:
     vars:
       TIMEOUT: '{{.TIMEOUT | default "300"}}'
       CHECK_INTERVAL: '{{.CHECK_INTERVAL | default "10"}}'
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
+      CONTAINERS: '{{.CONTAINERS | default ""}}'
     cmds:
     - |
       if [ -z "{{.CONTAINERS}}" ]; then

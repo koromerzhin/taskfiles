@@ -1,15 +1,5 @@
 version: '3'
 
-# Taskfile pour le monitoring des conteneurs Docker
-
-vars:
-  CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
-  CONTAINERS: '{{.CONTAINERS | default ""}}'
-  IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
-  STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
-  TIMEOUT: '{{.TIMEOUT | default "300"}}'
-  CHECK_INTERVAL: '{{.CHECK_INTERVAL | default "10"}}'
-
 tasks:
   start:
     desc: "Surveille le lancement de conteneurs en temps réel"
@@ -27,6 +17,8 @@ tasks:
       Exemples:
       task docker:monitor:container:start
       task docker:monitor:container:start IMAGE_NAME=nginx
+    vars:
+      IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
     cmds:
     - |
       echo "🔍 Surveillance des lancements de conteneurs en temps réel..."
@@ -54,6 +46,8 @@ tasks:
 
       Exemple:
       task docker:monitor:container:status CONTAINER_NAME=mon-conteneur
+    vars:
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
     cmds:
     - |
       if [ -z "{{.CONTAINER_NAME}}" ]; then
@@ -119,6 +113,9 @@ tasks:
 
       Exemple:
       task docker:monitor:container:batch:status CONTAINERS="traefik,portainer,app" STACK_NAME=production
+    vars:
+      CONTAINERS: '{{.CONTAINERS | default ""}}'
+      STACK_NAME: '{{.STACK_NAME | default ""}}'
     cmds:
     - |
       if [ -z "{{.CONTAINERS}}" ]; then

@@ -1,15 +1,12 @@
 version: '3'
 
-# Taskfile pour la gestion des variables d'environnement
-
-vars:
-  ENV_FILE: '{{.ENV_FILE | default ".env"}}'
-  ENV_EXAMPLE: '{{.ENV_EXAMPLE | default ".env.example"}}'
-
 tasks:
   init:
     desc: "Initialise le fichier .env depuis .env.example"
     silent: true
+    vars:
+      ENV_FILE: '{{.ENV_FILE | default ".env"}}'
+      ENV_EXAMPLE: '{{.ENV_EXAMPLE | default ".env.example"}}'
     summary: |
       Crée un fichier .env depuis .env.example avec des valeurs par défaut.
 
@@ -54,6 +51,8 @@ tasks:
   validate:
     desc: "Valide la configuration du fichier .env"
     silent: true
+    vars:
+      ENV_FILE: '{{.ENV_FILE | default ".env"}}'
     summary: |
       Vérifie la présence et la validité des variables d'environnement.
 
@@ -114,6 +113,8 @@ tasks:
   show:
     desc: "Affiche le contenu du fichier .env"
     silent: true
+    vars:
+      ENV_FILE: '{{.ENV_FILE | default ".env"}}'
     summary: |
       Affiche le contenu du fichier .env avec formatage.
 
@@ -160,6 +161,7 @@ tasks:
       Variables:
       - ENV_FILE: Fichier à sauvegarder (défaut: .env)
     vars:
+      ENV_FILE: '{{.ENV_FILE | default ".env"}}'
       TIMESTAMP: '{{now | date "2006-01-02_15-04-05"}}'
     cmds:
     - |

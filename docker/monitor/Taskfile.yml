@@ -7,15 +7,6 @@ includes:
     taskfile: ./container/Taskfile.yml
     dir: ./container
 
-vars:
-  IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
-  CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
-  CONTAINERS: '{{.CONTAINERS | default ""}}'
-  STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
-  TIMEOUT: '{{.TIMEOUT | default "300"}}'
-  CHECK_INTERVAL: '{{.CHECK_INTERVAL | default "10"}}'
-  LOG_LEVEL: '{{.LOG_LEVEL | default "INFO"}}'
-
 tasks:
   events:
     desc: "Surveille tous les événements Docker"
@@ -34,6 +25,9 @@ tasks:
       task docker:monitor:events
       task docker:monitor:events EVENT_TYPE=start
       task docker:monitor:events IMAGE_NAME=nginx EVENT_TYPE=start
+    vars:
+      EVENT_TYPE: '{{.EVENT_TYPE | default ""}}'
+      IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
     cmds:
     - |
       echo "📡 Surveillance des événements Docker en temps réel..."
@@ -61,6 +55,8 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    vars:
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
     summary: |
       Affiche un rapport de santé complet d'une stack Docker Swarm.
 
@@ -108,6 +104,10 @@ tasks:
   wait:stack:ready:
     desc: "Attend qu'une stack soit complètement déployée"
     silent: true
+    vars:
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
+      TIMEOUT: '{{.TIMEOUT | default "300"}}'
+      CHECK_INTERVAL: '{{.CHECK_INTERVAL | default "10"}}'
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
@@ -184,6 +184,7 @@ tasks:
     vars:
       EVENT_TYPES: '{{.EVENT_TYPES | default "start,stop,die,health_status"}}'
       SINCE: '{{.SINCE | default "1h"}}'
+      STACK_NAME: '{{.STACK_NAME | default ""}}'
     cmds:
     - |
       echo "📡 Surveillance des événements Docker..."

@@ -20,6 +20,7 @@ tasks:
       task docker:logs:container:tail CONTAINER_NAME=mon-conteneur
     vars:
       LINES: '{{.LINES | default "100"}}'
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
     cmds:
     - |
       if [ -z "{{.CONTAINER_NAME}}" ]; then
@@ -52,6 +53,7 @@ tasks:
     vars:
       LINES: '{{.LINES | default "100"}}'
       SINCE: '{{.SINCE | default ""}}'
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
     cmds:
     - |
       if [ -z "{{.CONTAINER_NAME}}" ]; then
@@ -88,6 +90,7 @@ tasks:
       task docker:logs:service:tail SERVICE_NAME=mon-service
     vars:
       LINES: '{{.LINES | default "100"}}'
+      SERVICE_NAME: '{{.SERVICE_NAME | default ""}}'
     cmds:
     - |
       if [ -z "{{.SERVICE_NAME}}" ]; then

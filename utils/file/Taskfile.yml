@@ -1,17 +1,14 @@
 version: '3'
 
-# Taskfile pour les opérations sur les fichiers
-
-vars:
-  SOURCE_FILE: '{{.SOURCE_FILE | default ""}}'
-  DEST_DIR: '{{.DEST_DIR | default ""}}'
-  DEST_FILE: '{{.DEST_FILE | default ""}}'
-  FORCE: '{{.FORCE | default "false"}}'
-
 tasks:
   move:
     desc: "Déplace un fichier vers un autre dossier"
     silent: true
+    vars:
+      SOURCE_FILE: '{{.SOURCE_FILE | default ""}}'
+      DEST_DIR: '{{.DEST_DIR | default ""}}'
+      DEST_FILE: '{{.DEST_FILE | default ""}}'
+      FORCE: '{{.FORCE | default "false"}}'
     summary: |
       Déplace un fichier vers un dossier de destination avec vérifications de sécurité.
 
@@ -95,6 +92,11 @@ tasks:
   copy:
     desc: "Copie un fichier vers un autre dossier"
     silent: true
+    vars:
+      SOURCE_FILE: '{{.SOURCE_FILE | default ""}}'
+      DEST_DIR: '{{.DEST_DIR | default ""}}'
+      DEST_FILE: '{{.DEST_FILE | default ""}}'
+      FORCE: '{{.FORCE | default "false"}}'
     summary: |
       Copie un fichier vers un dossier de destination avec vérifications de sécurité.
 
@@ -181,6 +183,10 @@ tasks:
   rename:
     desc: "Renomme un fichier dans le même dossier"
     silent: true
+    vars:
+      SOURCE_FILE: '{{.SOURCE_FILE | default ""}}'
+      NEW_NAME: '{{.NEW_NAME | default ""}}'
+      FORCE: '{{.FORCE | default "false"}}'
     summary: |
       Renomme un fichier dans son dossier actuel.
 
@@ -250,6 +256,9 @@ tasks:
   delete:
     desc: "Supprime un fichier avec confirmation"
     silent: true
+    vars:
+      SOURCE_FILE: '{{.SOURCE_FILE | default ""}}'
+      FORCE: '{{.FORCE | default "false"}}'
     summary: |
       Supprime un fichier avec demande de confirmation.
 

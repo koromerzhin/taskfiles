@@ -1,8 +1,5 @@
 version: '3'
 
-vars:
-  COMPOSE_FILE: '{{.COMPOSE_FILE | default "docker-compose.yml"}}'
-
 tasks:
   list:
     desc: "Liste toutes les images utilisées dans docker-compose.yml"
@@ -19,6 +16,8 @@ tasks:
       Exemples:
       task docker:images:list
       task docker:images:list COMPOSE_FILE=docker-compose.prod.yml
+    vars:
+      COMPOSE_FILE: '{{.COMPOSE_FILE | default "docker-compose.yml"}}'
     cmds:
     - |
       if [ ! -f "{{.COMPOSE_FILE}}" ]; then
@@ -44,6 +43,8 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    vars:
+      COMPOSE_FILE: '{{.COMPOSE_FILE | default "docker-compose.yml"}}'
     summary: |
       Utilise docker-compose pour télécharger toutes les images définies dans le fichier.
 
@@ -87,6 +88,9 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    vars:
+      COMPOSE_FILE: '{{.COMPOSE_FILE | default "docker-compose.yml"}}'
+      OUTPUT_FILE: '{{.OUTPUT_FILE | default "docker-images.txt"}}'
     summary: |
       Extrait la liste des images dans un fichier texte pour sauvegarde ou traitement.
 
@@ -123,6 +127,8 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    vars:
+      COMPOSE_FILE: '{{.COMPOSE_FILE | default "docker-compose.yml"}}'
     summary: |
       Vérifie quelles images du docker-compose.yml sont présentes localement.
 

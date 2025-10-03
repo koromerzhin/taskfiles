@@ -8,6 +8,9 @@ tasks:
   create:
     desc: "Crée un réseau Docker"
     silent: true
+    vars:
+      NETWORK_NAME: '{{.NETWORK_NAME | default "taskfiles-network"}}'
+      NETWORK_DRIVER: '{{.NETWORK_DRIVER | default "bridge"}}'
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
@@ -48,6 +51,8 @@ tasks:
   inspect:
     desc: "Inspecte un réseau Docker spécifique"
     silent: true
+    vars:
+      NETWORK_NAME: '{{.NETWORK_NAME | default "taskfiles-network"}}'
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
@@ -85,6 +90,8 @@ tasks:
 
       Exemple:
       task docker:network:remove NETWORK_NAME=mon-reseau
+    vars:
+      NETWORK_NAME: '{{.NETWORK_NAME | default "taskfiles-network"}}'
     cmds:
     - |
       DOCKER_FORMAT="table {{.Name}}"

@@ -11,12 +11,3 @@ includes:
 vars:
   BACKUP_DIR: '{{.BACKUP_DIR | default "./backups"}}'
   LOG_LEVEL: '{{.LOG_LEVEL | default "INFO"}}'
-
-# Toutes les commandes sont maintenant organisées dans les sous-namespaces
-# Utilisez les commandes via :
-# - task backup:create, backup:list
-# - task clean:logs
-# - task system:info
-# - task file:move, file:copy, file:rename, file:delete
-
-# Pas de tâches directes dans ce namespace, utilisez les includes

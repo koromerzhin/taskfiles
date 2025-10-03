@@ -1,11 +1,5 @@
 version: '3'
 
-# Taskfile pour les utilitaires de sauvegarde
-
-vars:
-  BACKUP_DIR: '{{.BACKUP_DIR | default "./backups"}}'
-  TIMESTAMP: '{{now | date "2006-01-02_15-04-05"}}'
-
 tasks:
   create:
     desc: "Crée une sauvegarde horodatée du projet"
@@ -22,6 +16,8 @@ tasks:
       task utils:backup:create BACKUP_DIR=/tmp/backups
     vars:
       EXCLUDE_PATTERNS: '{{.EXCLUDE_PATTERNS | default "node_modules,.git,tmp,*.log,dist,build"}}'
+      BACKUP_FILE: '{{.BACKUP_FILE | default "backup.tar.gz"}}'
+      TIMESTAMP: '{{now | date "2006-01-02_15-04-05"}}'
     cmds:
     - |
       echo "📦 Création d'une sauvegarde du projet..."
@@ -52,6 +48,8 @@ tasks:
   list:
     desc: "Liste les sauvegardes disponibles"
     silent: true
+    vars:
+      BACKUP_DIR: '{{.BACKUP_DIR | default "./backups"}}'
     summary: |
       Affiche la liste des sauvegardes dans le dossier de destination.
 
@@ -100,6 +98,7 @@ tasks:
       task utils:backup:restore BACKUP_FILE=./backups/project_2023-10-03_14-30-45.tar.gz
     vars:
       RESTORE_DIR: '{{.RESTORE_DIR | default "./"}}'
+      BACKUP_FILE: '{{.BACKUP_FILE | default ""}}'
     cmds:
     - |
       if [ -z "{{.BACKUP_FILE}}" ]; then
@@ -144,6 +143,7 @@ tasks:
       - BACKUP_DIR: Dossier des sauvegardes (défaut: ./backups)
     vars:
       DAYS: '{{.DAYS | default "30"}}'
+      BACKUP_DIR: '{{.BACKUP_DIR | default "./backups"}}'
     cmds:
     - |
       if [ ! -d "{{.BACKUP_DIR}}" ]; then

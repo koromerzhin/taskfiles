@@ -9,6 +9,8 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    vars:
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
     summary: |
       Analyse complète du cycle de vie d'un conteneur avec tous les événements.
 
@@ -59,6 +61,7 @@ tasks:
       task docker:analyze:container:performance CONTAINER_NAME=mon-conteneur
     vars:
       DURATION: '{{.DURATION | default "10"}}'
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
     cmds:
     - |
       if [ -z "{{.CONTAINER_NAME}}" ]; then
@@ -94,6 +97,7 @@ tasks:
       - STATUS: Filtrer par statut (running, exited, etc.)
     vars:
       STATUS: '{{.STATUS | default ""}}'
+      IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
     cmds:
     - |
       echo "📜 Historique de tous les conteneurs :"
@@ -157,6 +161,8 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    vars:
+      IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
     summary: |
       Analyse la structure en couches d'une image Docker.
 
