@@ -77,7 +77,7 @@ tasks:
       - COMPOSE_FILE: Fichier docker-compose (défaut: docker-compose.yml)
     cmds:
     - |
-      if ! docker stack ls --format "{{.Name}}" | grep -q "^{{.STACK_NAME}}$"; then
+      if ! docker stack ls --format "{{`{{.Name}}`}}" | grep -q "^{{.STACK_NAME}}$"; then
         echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
         echo "📋 Stacks disponibles :"
         docker stack ls
@@ -101,7 +101,7 @@ tasks:
       - STACK_NAME: Nom de la stack à supprimer (défaut: taskfiles-stack)
     cmds:
     - |
-      if ! docker stack ls --format "{{.Name}}" | grep -q "^{{.STACK_NAME}}$"; then
+      if ! docker stack ls --format "{{`{{.Name}}`}}" | grep -q "^{{.STACK_NAME}}$"; then
         echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
         echo "📋 Stacks disponibles :"
         docker stack ls
@@ -136,7 +136,7 @@ tasks:
       - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
     cmds:
     - |
-      if ! docker stack ls --format "{{.Name}}" | grep -q "^{{.STACK_NAME}}$"; then
+      if ! docker stack ls --format "{{`{{.Name}}`}}" | grep -q "^{{.STACK_NAME}}$"; then
         echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
         echo "📋 Stacks disponibles :"
         docker stack ls
@@ -159,7 +159,7 @@ tasks:
       - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
     cmds:
     - |
-      if ! docker stack ls --format "{{.Name}}" | grep -q "^{{.STACK_NAME}}$"; then
+      if ! docker stack ls --format "{{`{{.Name}}`}}" | grep -q "^{{.STACK_NAME}}$"; then
         echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
         echo "📋 Stacks disponibles :"
         docker stack ls
