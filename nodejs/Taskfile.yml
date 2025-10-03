@@ -5,8 +5,7 @@ includes:
   deps: ./deps
 
 vars:
-  DEV_DEPS: >
-    all-contributors-cli cypress generate-changelog gitmoji-changelog jscpd license-checker markdownlint-cli npm-run-all readme-md-generator semantic-git-commit-cli yaml
+  DEV_DEPS: "all-contributors-cli cypress generate-changelog gitmoji-changelog jscpd license-checker markdownlint-cli npm-run-all readme-md-generator semantic-git-commit-cli yaml"
 
 tasks:
   install:
@@ -25,16 +24,3 @@ tasks:
     - sh: command -v npm
     cmds:
     - npm init -y
-
-  # Alias pour compatibilité avec les commandes existantes
-  add-dev-deps:
-    desc: "Ajoute les devDependencies communes si elles ne sont pas déjà présentes (utilise deps:add)"
-    silent: true
-    cmds:
-    - task: deps:add
-
-  add-dev-deps-force:
-    desc: "Ajoute/met à jour toutes les devDependencies communes (utilise deps:add-force)"
-    silent: true
-    cmds:
-    - task: deps:add-force
