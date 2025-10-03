@@ -18,7 +18,7 @@ services:
   mercure:
     image: dunglas/mercure:v0.18
   redis:
-    image: redis:7.4.2
+    image: redis:7.4.5
   mariadb:
     image: mariadb:11.4.2
   postgresql:
