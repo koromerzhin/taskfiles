@@ -6,6 +6,7 @@ includes:
   backup: ./backup/Taskfile.yml
   clean: ./clean/Taskfile.yml
   system: ./system/Taskfile.yml
+  file: ./file/Taskfile.yml
 
 vars:
   BACKUP_DIR: '{{.BACKUP_DIR | default "./backups"}}'
@@ -16,5 +17,6 @@ vars:
 # - task backup:create, backup:list
 # - task clean:logs
 # - task system:info
+# - task file:move, file:copy, file:rename, file:delete
 
 # Pas de tâches directes dans ce namespace, utilisez les includes

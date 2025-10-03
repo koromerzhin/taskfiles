@@ -1,0 +1,312 @@
+version: '3'
+
+# Taskfile pour les opérations sur les fichiers
+
+vars:
+  SOURCE_FILE: '{{.SOURCE_FILE | default ""}}'
+  DEST_DIR: '{{.DEST_DIR | default ""}}'
+  DEST_FILE: '{{.DEST_FILE | default ""}}'
+  FORCE: '{{.FORCE | default "false"}}'
+
+tasks:
+  move:
+    desc: "Déplace un fichier vers un autre dossier"
+    silent: true
+    summary: |
+      Déplace un fichier vers un dossier de destination avec vérifications de sécurité.
+
+      Variables requises:
+      - SOURCE_FILE: Chemin du fichier source à déplacer
+      - DEST_DIR: Dossier de destination
+
+      Variables optionnelles:
+      - DEST_FILE: Nom du fichier de destination (si différent du source)
+      - FORCE: Force le déplacement même si le fichier de destination existe (défaut: false)
+
+      Exemples:
+      task utils:file:move SOURCE_FILE=./test.txt DEST_DIR=./backup/
+      task utils:file:move SOURCE_FILE=./config.json DEST_DIR=./settings/ DEST_FILE=config.bak.json
+      task utils:file:move SOURCE_FILE=./old.log DEST_DIR=./logs/ FORCE=true
+    preconditions:
+    - sh: "[ -n '{{.SOURCE_FILE}}' ]"
+      msg: "SOURCE_FILE est requis. Exemple: SOURCE_FILE=./fichier.txt"
+    - sh: "[ -n '{{.DEST_DIR}}' ]"
+      msg: "DEST_DIR est requis. Exemple: DEST_DIR=./dossier/"
+    - sh: "[ -f '{{.SOURCE_FILE}}' ]"
+      msg: "Le fichier source '{{.SOURCE_FILE}}' n'existe pas"
+    cmds:
+    - |
+      source_file="{{.SOURCE_FILE}}"
+      dest_dir="{{.DEST_DIR}}"
+      dest_file="{{.DEST_FILE}}"
+      force="{{.FORCE}}"
+
+      # Résout les chemins absolus
+      source_file=$(realpath "$source_file")
+      dest_dir=$(realpath "$dest_dir" 2>/dev/null || echo "$dest_dir")
+
+      # Détermine le nom du fichier de destination
+      if [ -n "$dest_file" ]; then
+        final_dest="$dest_dir/$dest_file"
+      else
+        filename=$(basename "$source_file")
+        final_dest="$dest_dir/$filename"
+      fi
+
+      echo "📁 Déplacement de fichier :"
+      echo "  📄 Source : $source_file"
+      echo "  📂 Destination : $final_dest"
+      echo ""
+
+      # Crée le dossier de destination s'il n'existe pas
+      if [ ! -d "$dest_dir" ]; then
+        echo "📝 Création du dossier de destination : $dest_dir"
+        mkdir -p "$dest_dir"
+      fi
+
+      # Vérifie si le fichier de destination existe déjà
+      if [ -f "$final_dest" ] && [ "$force" != "true" ]; then
+        echo "❌ Erreur : Le fichier de destination '$final_dest' existe déjà"
+        echo "💡 Utilisez FORCE=true pour écraser le fichier existant"
+        exit 1
+      fi
+
+      # Affiche un avertissement si on écrase un fichier
+      if [ -f "$final_dest" ] && [ "$force" = "true" ]; then
+        echo "⚠️  Écrasement du fichier existant : $final_dest"
+      fi
+
+      # Effectue le déplacement
+      if mv "$source_file" "$final_dest"; then
+        echo "✅ Fichier déplacé avec succès !"
+        echo "📍 Nouveau chemin : $final_dest"
+        
+        # Affiche les informations du fichier déplacé
+        if command -v ls >/dev/null 2>&1; then
+          echo ""
+          echo "📊 Informations du fichier :"
+          ls -lh "$final_dest"
+        fi
+      else
+        echo "❌ Erreur lors du déplacement du fichier"
+        exit 1
+      fi
+
+  copy:
+    desc: "Copie un fichier vers un autre dossier"
+    silent: true
+    summary: |
+      Copie un fichier vers un dossier de destination avec vérifications de sécurité.
+
+      Variables requises:
+      - SOURCE_FILE: Chemin du fichier source à copier
+      - DEST_DIR: Dossier de destination
+
+      Variables optionnelles:
+      - DEST_FILE: Nom du fichier de destination (si différent du source)
+      - FORCE: Force la copie même si le fichier de destination existe (défaut: false)
+
+      Exemples:
+      task utils:file:copy SOURCE_FILE=./test.txt DEST_DIR=./backup/
+      task utils:file:copy SOURCE_FILE=./config.json DEST_DIR=./settings/ DEST_FILE=config.bak.json
+      task utils:file:copy SOURCE_FILE=./important.log DEST_DIR=./logs/ FORCE=true
+    preconditions:
+    - sh: "[ -n '{{.SOURCE_FILE}}' ]"
+      msg: "SOURCE_FILE est requis. Exemple: SOURCE_FILE=./fichier.txt"
+    - sh: "[ -n '{{.DEST_DIR}}' ]"
+      msg: "DEST_DIR est requis. Exemple: DEST_DIR=./dossier/"
+    - sh: "[ -f '{{.SOURCE_FILE}}' ]"
+      msg: "Le fichier source '{{.SOURCE_FILE}}' n'existe pas"
+    cmds:
+    - |
+      source_file="{{.SOURCE_FILE}}"
+      dest_dir="{{.DEST_DIR}}"
+      dest_file="{{.DEST_FILE}}"
+      force="{{.FORCE}}"
+
+      # Résout les chemins absolus
+      source_file=$(realpath "$source_file")
+      dest_dir=$(realpath "$dest_dir" 2>/dev/null || echo "$dest_dir")
+
+      # Détermine le nom du fichier de destination
+      if [ -n "$dest_file" ]; then
+        final_dest="$dest_dir/$dest_file"
+      else
+        filename=$(basename "$source_file")
+        final_dest="$dest_dir/$filename"
+      fi
+
+      echo "📁 Copie de fichier :"
+      echo "  📄 Source : $source_file"
+      echo "  📂 Destination : $final_dest"
+      echo ""
+
+      # Crée le dossier de destination s'il n'existe pas
+      if [ ! -d "$dest_dir" ]; then
+        echo "📝 Création du dossier de destination : $dest_dir"
+        mkdir -p "$dest_dir"
+      fi
+
+      # Vérifie si le fichier de destination existe déjà
+      if [ -f "$final_dest" ] && [ "$force" != "true" ]; then
+        echo "❌ Erreur : Le fichier de destination '$final_dest' existe déjà"
+        echo "💡 Utilisez FORCE=true pour écraser le fichier existant"
+        exit 1
+      fi
+
+      # Affiche un avertissement si on écrase un fichier
+      if [ -f "$final_dest" ] && [ "$force" = "true" ]; then
+        echo "⚠️  Écrasement du fichier existant : $final_dest"
+      fi
+
+      # Effectue la copie
+      if cp "$source_file" "$final_dest"; then
+        echo "✅ Fichier copié avec succès !"
+        echo "📍 Copie créée : $final_dest"
+        
+        # Affiche les informations des fichiers
+        if command -v ls >/dev/null 2>&1; then
+          echo ""
+          echo "📊 Informations des fichiers :"
+          echo "Original :"
+          ls -lh "$source_file"
+          echo "Copie :"
+          ls -lh "$final_dest"
+        fi
+      else
+        echo "❌ Erreur lors de la copie du fichier"
+        exit 1
+      fi
+
+  rename:
+    desc: "Renomme un fichier dans le même dossier"
+    silent: true
+    summary: |
+      Renomme un fichier dans son dossier actuel.
+
+      Variables requises:
+      - SOURCE_FILE: Chemin du fichier source à renommer
+      - NEW_NAME: Nouveau nom du fichier
+
+      Variables optionnelles:
+      - FORCE: Force le renommage même si le fichier de destination existe (défaut: false)
+
+      Exemples:
+      task utils:file:rename SOURCE_FILE=./old_name.txt NEW_NAME=new_name.txt
+      task utils:file:rename SOURCE_FILE=./config.json NEW_NAME=config.backup.json FORCE=true
+    vars:
+      NEW_NAME: '{{.NEW_NAME | default ""}}'
+    preconditions:
+    - sh: "[ -n '{{.SOURCE_FILE}}' ]"
+      msg: "SOURCE_FILE est requis. Exemple: SOURCE_FILE=./fichier.txt"
+    - sh: "[ -n '{{.NEW_NAME}}' ]"
+      msg: "NEW_NAME est requis. Exemple: NEW_NAME=nouveau_nom.txt"
+    - sh: "[ -f '{{.SOURCE_FILE}}' ]"
+      msg: "Le fichier source '{{.SOURCE_FILE}}' n'existe pas"
+    cmds:
+    - |
+      source_file="{{.SOURCE_FILE}}"
+      new_name="{{.NEW_NAME}}"
+      force="{{.FORCE}}"
+
+      # Résout le chemin absolu du fichier source
+      source_file=$(realpath "$source_file")
+      source_dir=$(dirname "$source_file")
+      final_dest="$source_dir/$new_name"
+
+      echo "📝 Renommage de fichier :"
+      echo "  📄 Ancien nom : $source_file"
+      echo "  📄 Nouveau nom : $final_dest"
+      echo ""
+
+      # Vérifie si le fichier de destination existe déjà
+      if [ -f "$final_dest" ] && [ "$force" != "true" ]; then
+        echo "❌ Erreur : Un fichier nommé '$new_name' existe déjà dans ce dossier"
+        echo "💡 Utilisez FORCE=true pour écraser le fichier existant"
+        exit 1
+      fi
+
+      # Affiche un avertissement si on écrase un fichier
+      if [ -f "$final_dest" ] && [ "$force" = "true" ]; then
+        echo "⚠️  Écrasement du fichier existant : $final_dest"
+      fi
+
+      # Effectue le renommage
+      if mv "$source_file" "$final_dest"; then
+        echo "✅ Fichier renommé avec succès !"
+        echo "📍 Nouveau chemin : $final_dest"
+        
+        # Affiche les informations du fichier renommé
+        if command -v ls >/dev/null 2>&1; then
+          echo ""
+          echo "📊 Informations du fichier :"
+          ls -lh "$final_dest"
+        fi
+      else
+        echo "❌ Erreur lors du renommage du fichier"
+        exit 1
+      fi
+
+  delete:
+    desc: "Supprime un fichier avec confirmation"
+    silent: true
+    summary: |
+      Supprime un fichier avec demande de confirmation.
+
+      Variables requises:
+      - SOURCE_FILE: Chemin du fichier à supprimer
+
+      Variables optionnelles:
+      - FORCE: Force la suppression sans confirmation (défaut: false)
+
+      Exemples:
+      task utils:file:delete SOURCE_FILE=./temp.txt
+      task utils:file:delete SOURCE_FILE=./old_file.log FORCE=true
+    preconditions:
+    - sh: "[ -n '{{.SOURCE_FILE}}' ]"
+      msg: "SOURCE_FILE est requis. Exemple: SOURCE_FILE=./fichier.txt"
+    - sh: "[ -f '{{.SOURCE_FILE}}' ]"
+      msg: "Le fichier '{{.SOURCE_FILE}}' n'existe pas"
+    cmds:
+    - |
+      source_file="{{.SOURCE_FILE}}"
+      force="{{.FORCE}}"
+
+      # Résout le chemin absolu
+      source_file=$(realpath "$source_file")
+
+      echo "🗑️  Suppression de fichier :"
+      echo "  📄 Fichier : $source_file"
+      echo ""
+
+      # Affiche les informations du fichier
+      if command -v ls >/dev/null 2>&1; then
+        echo "📊 Informations du fichier :"
+        ls -lh "$source_file"
+        echo ""
+      fi
+
+      # Demande de confirmation si FORCE n'est pas activé
+      if [ "$force" != "true" ]; then
+        printf "❓ Êtes-vous sûr de vouloir supprimer ce fichier ? [y/N] "
+        read -r response
+        case "$response" in
+          [yY][eE][sS]|[yY])
+            echo "✅ Confirmation reçue, suppression en cours..."
+            ;;
+          *)
+            echo "❌ Suppression annulée"
+            exit 0
+            ;;
+        esac
+      else
+        echo "⚠️  Suppression forcée (sans confirmation)"
+      fi
+
+      # Effectue la suppression
+      if rm "$source_file"; then
+        echo "✅ Fichier supprimé avec succès !"
+      else
+        echo "❌ Erreur lors de la suppression du fichier"
+        exit 1
+      fi
