@@ -24,7 +24,7 @@ services:
   postgresql:
     image: postgres:17.2
   mailtest:
-    image: axllent/mailpit:v1.22
+    image: axllent/mailpit:v1.27
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:5.2.2
   portainer:
