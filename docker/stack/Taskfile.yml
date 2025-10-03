@@ -495,7 +495,11 @@ tasks:
 
       # Préparer les options Docker exec
       docker_options=""
-      if [ "{{.INTERACTIVE}}" = "true" ]; then
+      # Vérifier si on est dans un environnement CI/CD où TTY n'est pas disponible
+      if [ "${DOCKER_INTERACTIVE:-true}" = "false" ] || [ "${CI:-false}" = "true" ] || [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
+        # En CI/CD, ne pas utiliser le mode interactif
+        docker_options=""
+      elif [ "{{.INTERACTIVE}}" = "true" ]; then
         docker_options="-it"
       fi      # Exécuter la commande
       docker exec $docker_options $container_id {{.COMMAND}}
@@ -617,7 +621,16 @@ tasks:
       fi
 
       # Préparer les options pour docker exec
-      docker_options="-it"  # Par défaut interactif pour shell      # Ajouter l'utilisateur si spécifié
+      docker_options=""
+      # Vérifier si on est dans un environnement CI/CD où TTY n'est pas disponible
+      if [ "${DOCKER_INTERACTIVE:-true}" = "false" ] || [ "${CI:-false}" = "true" ] || [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
+        # En CI/CD, ne pas utiliser le mode interactif
+        docker_options=""
+        echo "⚠️  Mode non-interactif détecté (CI/CD)"
+      else
+        # En environnement normal, utiliser le mode interactif pour shell
+        docker_options="-it"
+      fi      # Ajouter l'utilisateur si spécifié
       if [ -n "{{.EXEC_USER}}" ]; then
         docker_options="$docker_options --user {{.EXEC_USER}}"
         echo "👤 Utilisateur : {{.EXEC_USER}}"
