@@ -30,6 +30,7 @@ tasks:
 
   info:
     desc: "Affiche les informations du projet avec les variables d'environnement"
+    silent: true
     cmds:
     - |
       echo "🛠️  {{.PROJECT_NAME}} v{{.PROJECT_VERSION}} - Collection de Taskfiles"
@@ -37,6 +38,7 @@ tasks:
 
   help:
     desc: "Affiche l'aide détaillée"
+    silent: true
     aliases: [ h ]
     cmds:
     - task: default
