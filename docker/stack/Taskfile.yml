@@ -405,3 +405,237 @@ tasks:
         echo "⏳ Attente... (${elapsed}s/{{.TIMEOUT}}s)"
         sleep {{.CHECK_INTERVAL}}
       done
+
+  exec:
+    desc: "Exécute une commande dans un conteneur d'une stack"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    vars:
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
+      SERVICE_NAME: '{{.SERVICE_NAME | default ""}}'
+      COMMAND: '{{.COMMAND | default "sh"}}'
+      TASK_FILTER: '{{.TASK_FILTER | default "running"}}'
+      INTERACTIVE: '{{.INTERACTIVE | default "true"}}'
+    summary: |
+      Exécute une commande dans un conteneur appartenant à une stack Docker Swarm.
+
+      Variables requises:
+      - SERVICE_NAME: Nom du service dans la stack (ex: "web", "api", "database")
+
+      Variables optionnelles:
+      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
+      - COMMAND: Commande à exécuter (défaut: sh)
+      - TASK_FILTER: Filtre pour les tâches (défaut: running)
+      - INTERACTIVE: Mode interactif (défaut: true)
+
+      Exemples:
+      task docker:stack:exec SERVICE_NAME=web
+      task docker:stack:exec SERVICE_NAME=web COMMAND="ls -la"
+      task docker:stack:exec SERVICE_NAME=api COMMAND="/app/scripts/migrate.sh"
+      task docker:stack:exec SERVICE_NAME=database COMMAND="mysql -u root -p" INTERACTIVE=true
+      task docker:stack:exec STACK_NAME=production SERVICE_NAME=worker COMMAND="python manage.py migrate"
+    cmds:
+    - |
+      if [ -z "{{.SERVICE_NAME}}" ]; then
+        echo "❌ SERVICE_NAME est requis"
+        echo ""
+        echo "🔧 Services disponibles dans la stack '{{.STACK_NAME}}' :"
+        if docker stack ls --format "{{.Name}}" | grep -q "^{{.STACK_NAME}}$"; then
+          docker stack services {{.STACK_NAME}} --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+        else
+          echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
+          echo "📋 Stacks disponibles :"
+          docker stack ls --format "{{.Name}}"
+        fi
+        exit 1
+      fi
+
+      # Vérifier que la stack existe
+      echo "🔍 Vérification de l'existence de la stack '{{.STACK_NAME}}'..."
+      if ! docker stack ls | awk 'NR>1 {print $1}' | grep -q "^{{.STACK_NAME}}$"; then
+        echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
+        echo "📋 Stacks disponibles :"
+        docker stack ls | awk 'NR>1 {print $1}'
+        exit 1
+      fi
+      echo "✅ Stack '{{.STACK_NAME}}' trouvée"
+
+      service_full_name="{{.STACK_NAME}}_{{.SERVICE_NAME}}"
+
+      # Vérifier que le service existe
+      echo "🔍 Vérification de l'existence du service '$service_full_name'..."
+      if ! docker service ls | awk 'NR>1 {print $2}' | grep -q "^$service_full_name$"; then
+        echo "❌ Le service '$service_full_name' n'existe pas"
+        echo ""
+        echo "🔧 Services disponibles dans la stack '{{.STACK_NAME}}' :"
+        docker stack services {{.STACK_NAME}} | awk 'NR>1 {print $2}'
+        exit 1
+      fi
+      echo "✅ Service '$service_full_name' trouvé"
+
+      # Trouver le conteneur actif pour ce service
+      echo "🔍 Recherche d'un conteneur actif pour le service '$service_full_name'..."
+
+      container_id=$(docker ps | grep "$service_full_name" | awk '{print $1}' | head -n 1)
+
+      if [ -z "$container_id" ]; then
+        echo "❌ Aucun conteneur actif trouvé pour le service '$service_full_name'"
+        echo ""
+        echo "📋 État des tâches pour ce service :"
+        docker service ps $service_full_name
+        exit 1
+      fi
+
+      container_name=$(docker ps | grep "$container_id" | awk '{print $NF}')
+      echo "✅ Conteneur trouvé : $container_name ($container_id)"
+      echo "🚀 Exécution de la commande : {{.COMMAND}}"
+      echo ""
+
+      # Préparer les options Docker exec
+      docker_options=""
+      if [ "{{.INTERACTIVE}}" = "true" ]; then
+        docker_options="-it"
+      fi
+
+      # Exécuter la commande
+      docker exec $docker_options $container_id {{.COMMAND}}
+
+  exec:script:
+    desc: "Exécute un script dans un conteneur d'une stack"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    vars:
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
+      SERVICE_NAME: '{{.SERVICE_NAME | default ""}}'
+      SCRIPT_PATH: '{{.SCRIPT_PATH | default ""}}'
+      SCRIPT_ARGS: '{{.SCRIPT_ARGS | default ""}}'
+      TASK_FILTER: '{{.TASK_FILTER | default "running"}}'
+      WORKING_DIR: '{{.WORKING_DIR | default ""}}'
+    summary: |
+      Exécute un script spécifique dans un conteneur appartenant à une stack Docker Swarm.
+
+      Variables requises:
+      - SERVICE_NAME: Nom du service dans la stack (ex: "web", "api", "database")  
+      - SCRIPT_PATH: Chemin du script à exécuter dans le conteneur
+
+      Variables optionnelles:
+      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
+      - SCRIPT_ARGS: Arguments à passer au script (défaut: "")
+      - TASK_FILTER: Filtre pour les tâches (défaut: running)
+      - WORKING_DIR: Répertoire de travail dans le conteneur (défaut: répertoire courant du conteneur)
+
+      Exemples:
+      task docker:stack:exec:script SERVICE_NAME=web SCRIPT_PATH="/app/scripts/deploy.sh"
+      task docker:stack:exec:script SERVICE_NAME=api SCRIPT_PATH="/app/migrate.py" SCRIPT_ARGS="--force"
+      task docker:stack:exec:script SERVICE_NAME=worker SCRIPT_PATH="/scripts/backup.sh" WORKING_DIR="/data"
+      task docker:stack:exec:script STACK_NAME=production SERVICE_NAME=app SCRIPT_PATH="/opt/scripts/maintenance.sh" SCRIPT_ARGS="--mode full"
+    cmds:
+    - |
+      if [ -z "{{.SERVICE_NAME}}" ]; then
+        echo "❌ SERVICE_NAME est requis"
+        echo ""
+        echo "🔧 Services disponibles dans la stack '{{.STACK_NAME}}' :"
+        if docker stack ls | awk 'NR>1 {print $1}' | grep -q "^{{.STACK_NAME}}$"; then
+          docker stack services {{.STACK_NAME}} --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+        else
+          echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
+        fi
+        exit 1
+      fi
+
+      if [ -z "{{.SCRIPT_PATH}}" ]; then
+        echo "❌ SCRIPT_PATH est requis"
+        echo "💡 Exemple: SCRIPT_PATH=/app/scripts/deploy.sh"
+        exit 1
+      fi
+
+      # Vérifier que la stack existe
+      if ! docker stack ls | awk 'NR>1 {print $1}' | grep -q "^{{.STACK_NAME}}$"; then
+        echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
+        echo "📋 Stacks disponibles :"
+        docker stack ls | awk 'NR>1 {print $1}'
+        exit 1
+      fi
+
+      service_full_name="{{.STACK_NAME}}_{{.SERVICE_NAME}}"
+
+      # Vérifier que le service existe
+      if ! docker service ls --filter "name=$service_full_name" --format "{{.Name}}" | grep -q "^$service_full_name$"; then
+        echo "❌ Le service '$service_full_name' n'existe pas"
+        echo ""
+        echo "🔧 Services disponibles dans la stack '{{.STACK_NAME}}' :"
+        docker stack services {{.STACK_NAME}} --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+        exit 1
+      fi
+
+      # Trouver le conteneur actif pour ce service
+      echo "🔍 Recherche d'un conteneur actif pour le service '$service_full_name'..."
+
+      container_id=$(docker ps --filter "label=com.docker.swarm.service.name=$service_full_name" --filter "status={{.TASK_FILTER}}" --format "{{.ID}}" | head -n 1)
+
+      if [ -z "$container_id" ]; then
+        echo "❌ Aucun conteneur {{.TASK_FILTER}} trouvé pour le service '$service_full_name'"
+        echo ""
+        echo "📋 État des tâches pour ce service :"
+        docker service ps $service_full_name --format "table {{.Name}}\t{{.Node}}\t{{.DesiredState}}\t{{.CurrentState}}"
+        exit 1
+      fi
+
+      container_name=$(docker ps --filter "id=$container_id" --format "{{.Names}}")
+      echo "✅ Conteneur trouvé : $container_name ($container_id)"
+
+      # Vérifier que le script existe dans le conteneur
+      echo "🔍 Vérification de l'existence du script '{{.SCRIPT_PATH}}'..."
+      if ! docker exec $container_id test -f "{{.SCRIPT_PATH}}"; then
+        echo "❌ Le script '{{.SCRIPT_PATH}}' n'existe pas dans le conteneur"
+        echo ""
+        echo "💡 Contenu du répertoire parent :"
+        script_dir=$(dirname "{{.SCRIPT_PATH}}")
+        docker exec $container_id ls -la "$script_dir" 2>/dev/null || echo "   Répertoire '$script_dir' non accessible"
+        exit 1
+      fi
+
+      # Vérifier que le script est exécutable
+      if ! docker exec $container_id test -x "{{.SCRIPT_PATH}}"; then
+        echo "⚠️  Le script '{{.SCRIPT_PATH}}' n'est pas exécutable"
+        echo "🔧 Tentative de correction des permissions..."
+        docker exec $container_id chmod +x "{{.SCRIPT_PATH}}"
+      fi
+
+      # Construire la commande
+      command="{{.SCRIPT_PATH}}"
+      if [ -n "{{.SCRIPT_ARGS}}" ]; then
+        command="$command {{.SCRIPT_ARGS}}"
+      fi
+
+      # Ajouter le changement de répertoire si spécifié
+      if [ -n "{{.WORKING_DIR}}" ]; then
+        command="cd {{.WORKING_DIR}} && $command"
+      fi
+
+      echo "🚀 Exécution du script :"
+      echo "   📄 Script : {{.SCRIPT_PATH}}"
+      if [ -n "{{.SCRIPT_ARGS}}" ]; then
+        echo "   📋 Arguments : {{.SCRIPT_ARGS}}"
+      fi
+      if [ -n "{{.WORKING_DIR}}" ]; then
+        echo "   📁 Répertoire : {{.WORKING_DIR}}"
+      fi
+      echo "   🐳 Conteneur : $container_name"
+      echo ""
+
+      # Exécuter le script
+      docker exec $container_id sh -c "$command"
+      exit_code=$?
+
+      echo ""
+      if [ $exit_code -eq 0 ]; then
+        echo "✅ Script exécuté avec succès"
+      else
+        echo "❌ Le script a échoué avec le code de sortie $exit_code"
+        exit $exit_code
+      fi
