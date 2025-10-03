@@ -502,6 +502,144 @@ tasks:
       # Exécuter la commande
       docker exec $docker_options $container_id {{.COMMAND}}
 
+  shell:
+    desc: "Accède au shell (bash ou sh) d'un conteneur dans une stack"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    vars:
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
+      SERVICE_NAME: '{{.SERVICE_NAME | default ""}}'
+      SHELL_TYPE: '{{.SHELL_TYPE | default "auto"}}'
+      EXEC_USER: '{{.EXEC_USER | default ""}}'
+    summary: |
+      Accède au shell interactif (bash ou sh) d'un conteneur appartenant à une stack Docker Swarm.
+      Détecte automatiquement le shell disponible (bash prioritaire, sinon sh).
+
+      Variables requises:
+      - SERVICE_NAME: Nom du service dans la stack (ex: "web", "api", "database")
+
+      Variables optionnelles:
+      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
+      - SHELL_TYPE: Type de shell à utiliser - "bash", "sh", "auto" (défaut: auto)
+      - EXEC_USER: Utilisateur pour l'exécution (défaut: utilisateur par défaut du conteneur)
+
+      Exemples:
+      task docker:stack:shell SERVICE_NAME=web
+      task docker:stack:shell SERVICE_NAME=api SHELL_TYPE=bash
+      task docker:stack:shell SERVICE_NAME=database EXEC_USER=root
+      task docker:stack:shell STACK_NAME=production SERVICE_NAME=worker SHELL_TYPE=sh
+    cmds:
+    - |
+      if [ -z "{{.SERVICE_NAME}}" ]; then
+        echo "❌ SERVICE_NAME est requis"
+        echo ""
+        echo "🔧 Services disponibles dans la stack '{{.STACK_NAME}}' :"
+        if docker stack ls --format "{{.Name}}" | grep -q "^{{.STACK_NAME}}$"; then
+          docker stack services {{.STACK_NAME}} --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+        else
+          echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
+          echo "📋 Stacks disponibles :"
+          docker stack ls --format "{{.Name}}"
+        fi
+        exit 1
+      fi
+
+      # Vérifier que la stack existe
+      echo "🔍 Vérification de l'existence de la stack '{{.STACK_NAME}}'..."
+      if ! docker stack ls | awk 'NR>1 {print $1}' | grep -q "^{{.STACK_NAME}}$"; then
+        echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
+        echo "📋 Stacks disponibles :"
+        docker stack ls | awk 'NR>1 {print $1}'
+        exit 1
+      fi
+      echo "✅ Stack '{{.STACK_NAME}}' trouvée"
+
+      service_full_name="{{.STACK_NAME}}_{{.SERVICE_NAME}}"
+
+      # Vérifier que le service existe
+      echo "🔍 Vérification de l'existence du service '$service_full_name'..."
+      if ! docker service ls | awk 'NR>1 {print $2}' | grep -q "^$service_full_name$"; then
+        echo "❌ Le service '$service_full_name' n'existe pas"
+        echo ""
+        echo "🔧 Services disponibles dans la stack '{{.STACK_NAME}}' :"
+        docker stack services {{.STACK_NAME}} | awk 'NR>1 {print $2}'
+        exit 1
+      fi
+      echo "✅ Service '$service_full_name' trouvé"
+
+      # Trouver le conteneur actif pour ce service
+      echo "🔍 Recherche d'un conteneur actif pour le service '$service_full_name'..."
+
+      container_id=$(docker ps | grep "$service_full_name" | awk '{print $1}' | head -n 1)
+
+      if [ -z "$container_id" ]; then
+        echo "❌ Aucun conteneur actif trouvé pour le service '$service_full_name'"
+        echo ""
+        echo "📋 État des tâches pour ce service :"
+        docker service ps $service_full_name
+        exit 1
+      fi
+
+      container_name=$(docker ps | grep "$container_id" | awk '{print $NF}')
+      echo "✅ Conteneur trouvé : $container_name ($container_id)"
+
+      # Déterminer le shell à utiliser
+      shell_command=""
+      shell_type="{{.SHELL_TYPE}}"
+
+      if [ "$shell_type" = "auto" ]; then
+        echo "🔍 Détection automatique du shell disponible..."
+        
+        # Tester bash en premier
+        if docker exec $container_id which bash >/dev/null 2>&1; then
+          shell_command="bash"
+          echo "✅ Bash détecté et disponible"
+        elif docker exec $container_id which sh >/dev/null 2>&1; then
+          shell_command="sh"
+          echo "✅ Shell sh détecté et disponible"
+        else
+          echo "❌ Aucun shell compatible trouvé (bash/sh)"
+          echo "💡 Shells disponibles dans le conteneur :"
+          docker exec $container_id ls -la /bin/*sh 2>/dev/null || echo "   Aucun shell trouvé dans /bin/"
+          exit 1
+        fi
+      else
+        shell_command="$shell_type"
+        echo "🔧 Shell spécifié : $shell_command"
+        
+        # Vérifier que le shell spécifié existe
+        if ! docker exec $container_id which $shell_command >/dev/null 2>&1; then
+          echo "❌ Shell '$shell_command' non disponible dans le conteneur"
+          echo "💡 Shells disponibles :"
+          docker exec $container_id ls -la /bin/*sh 2>/dev/null || echo "   Aucun shell trouvé dans /bin/"
+          exit 1
+        fi
+      fi
+
+      # Préparer les options pour docker exec
+      docker_options="-it"
+
+      # Ajouter l'utilisateur si spécifié
+      if [ -n "{{.EXEC_USER}}" ]; then
+        docker_options="$docker_options --user {{.EXEC_USER}}"
+        echo "👤 Utilisateur : {{.EXEC_USER}}"
+      fi
+
+      echo ""
+      echo "🐚 Ouverture du shell interactif..."
+      echo "   🐳 Conteneur : $container_name ($container_id)"
+      echo "   🐚 Shell : $shell_command"
+      echo "   ⌨️  Mode : Interactif"
+      echo ""
+      echo "💡 Tapez 'exit' pour quitter le shell"
+      echo "─────────────────────────────────────────────"
+      echo ""
+
+      # Lancer le shell interactif
+      docker exec $docker_options $container_id $shell_command
+
   exec:script:
     desc: "Exécute un script dans un conteneur d'une stack"
     silent: true
