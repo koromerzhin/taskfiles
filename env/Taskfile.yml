@@ -1,45 +1,176 @@
 version: '3'
+
 # Taskfile pour la gestion des variables d'environnement
+
+vars:
+  ENV_FILE: '{{.ENV_FILE | default ".env"}}'
+  ENV_EXAMPLE: '{{.ENV_EXAMPLE | default ".env.example"}}'
+
 tasks:
   init:
     desc: "Initialise le fichier .env depuis .env.example"
     silent: true
+    summary: |
+      Crée un fichier .env depuis .env.example avec des valeurs par défaut.
+
+      Variables:
+      - ENV_FILE: Nom du fichier .env (défaut: .env)
+      - ENV_EXAMPLE: Nom du fichier exemple (défaut: .env.example)
     cmds:
     - |
-      if [ ! -f ".env" ]; then
-        if [ -f ".env.example" ]; then
-          cp .env.example .env
-          echo "✅ Fichier .env créé depuis .env.example"
-          echo "📝 Veuillez éditer le fichier .env pour ajuster les valeurs"
+      if [ ! -f "{{.ENV_FILE}}" ]; then
+        if [ -f "{{.ENV_EXAMPLE}}" ]; then
+          cp "{{.ENV_EXAMPLE}}" "{{.ENV_FILE}}"
+          echo "✅ Fichier {{.ENV_FILE}} créé depuis {{.ENV_EXAMPLE}}"
+          echo "📝 Veuillez éditer le fichier {{.ENV_FILE}} pour ajuster les valeurs"
+          echo ""
+          echo "🔍 Contenu du fichier :"
+          cat "{{.ENV_FILE}}"
         else
-          echo "❌ Fichier .env.example non trouvé"
-          exit 1
+          echo "❌ Fichier {{.ENV_EXAMPLE}} non trouvé"
+          echo "💡 Création d'un fichier .env minimal..."
+          cat > "{{.ENV_FILE}}" << 'EOF'
+      # Configuration du projet
+      PROJECT_NAME=taskfiles-collection
+      PROJECT_VERSION=1.0.0
+      ENVIRONMENT=development
+
+      # Variables Docker (si utilisées)
+      CONTAINER_NAME=
+      IMAGE_NAME=
+
+      # Variables Node.js (si utilisées)
+      NODE_ENV=development
+      PORT=3000
+      EOF
+          echo "✅ Fichier {{.ENV_FILE}} minimal créé"
         fi
       else
-        echo "ℹ️  Le fichier .env existe déjà"
+        echo "ℹ️  Le fichier {{.ENV_FILE}} existe déjà"
+        echo "📄 Contenu actuel :"
+        cat "{{.ENV_FILE}}"
       fi
 
   validate:
     desc: "Valide la configuration du fichier .env"
     silent: true
-    deps: [ init ]
+    summary: |
+      Vérifie la présence et la validité des variables d'environnement.
+
+      Variables:
+      - ENV_FILE: Fichier à valider (défaut: .env)
     cmds:
     - |
-      if [ ! -f ".env" ]; then
-        echo "❌ Fichier .env non trouvé. Exécutez 'task env:init' d'abord."
+      if [ ! -f "{{.ENV_FILE}}" ]; then
+        echo "❌ Fichier {{.ENV_FILE}} non trouvé"
+        echo "💡 Exécutez 'task env:init' pour créer le fichier"
         exit 1
       fi
-    - echo "✅ Fichier .env trouvé"
-    - |
+
+      echo "🔍 Validation du fichier {{.ENV_FILE}}..."
+      echo ""
+
+      # Chargement des variables
+      set -a
+      source "{{.ENV_FILE}}"
+      set +a
+
       # Vérification des variables critiques
       missing_vars=""
-      if [ -z "{{.PROJECT_NAME}}" ]; then missing_vars="$missing_vars PROJECT_NAME"; fi
-      if [ -z "{{.PROJECT_VERSION}}" ]; then missing_vars="$missing_vars PROJECT_VERSION"; fi
-      if [ -z "{{.ENVIRONMENT}}" ]; then missing_vars="$missing_vars ENVIRONMENT"; fi
+      invalid_vars=""
 
-      if [ -n "$missing_vars" ]; then
-        echo "❌ Variables manquantes dans .env: $missing_vars"
-        exit 1
-      else
-        echo "✅ Configuration .env valide"
+      # Variables obligatoires
+      required_vars="PROJECT_NAME ENVIRONMENT"
+      for var in $required_vars; do
+        eval "value=\$$var"
+        if [ -z "$value" ]; then
+          missing_vars="$missing_vars $var"
+        else
+          echo "  ✅ $var=$value"
+        fi
+      done
+
+      # Validation des valeurs
+      if [ -n "$ENVIRONMENT" ] && ! echo "$ENVIRONMENT" | grep -qE "^(development|staging|production)$"; then
+        invalid_vars="$invalid_vars ENVIRONMENT(valeurs_valides:development,staging,production)"
       fi
+
+      # Rapport final
+      echo ""
+      if [ -n "$missing_vars" ]; then
+        echo "❌ Variables manquantes: $missing_vars"
+      fi
+
+      if [ -n "$invalid_vars" ]; then
+        echo "⚠️  Variables invalides: $invalid_vars"
+      fi
+
+      if [ -z "$missing_vars" ] && [ -z "$invalid_vars" ]; then
+        echo "✅ Configuration {{.ENV_FILE}} valide"
+      else
+        exit 1
+      fi
+
+  show:
+    desc: "Affiche le contenu du fichier .env"
+    silent: true
+    summary: |
+      Affiche le contenu du fichier .env avec formatage.
+
+      Variables:
+      - ENV_FILE: Fichier à afficher (défaut: .env)
+    cmds:
+    - |
+      if [ ! -f "{{.ENV_FILE}}" ]; then
+        echo "❌ Fichier {{.ENV_FILE}} non trouvé"
+        echo "💡 Exécutez 'task env:init' pour créer le fichier"
+        exit 1
+      fi
+
+      echo "📄 Contenu du fichier {{.ENV_FILE}} :"
+      echo ""
+
+      line_num=1
+      while IFS= read -r line; do
+        # Formater les lignes selon leur type
+        if [[ "$line" =~ ^[[:space:]]*# ]]; then
+          # Commentaire
+          printf "%3d: \033[90m%s\033[0m\n" "$line_num" "$line"
+        elif [[ "$line" =~ ^[[:space:]]*$ ]]; then
+          # Ligne vide
+          printf "%3d: \n" "$line_num"
+        elif [[ "$line" =~ ^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*= ]]; then
+          # Variable
+          var_name=$(echo "$line" | cut -d'=' -f1)
+          var_value=$(echo "$line" | cut -d'=' -f2-)
+          printf "%3d: \033[92m%s\033[0m=\033[93m%s\033[0m\n" "$line_num" "$var_name" "$var_value"
+        else
+          # Autre
+          printf "%3d: %s\n" "$line_num" "$line"
+        fi
+        line_num=$((line_num + 1))
+      done < "{{.ENV_FILE}}"
+
+  backup:
+    desc: "Crée une sauvegarde du fichier .env"
+    silent: true
+    summary: |
+      Crée une sauvegarde horodatée du fichier .env.
+
+      Variables:
+      - ENV_FILE: Fichier à sauvegarder (défaut: .env)
+    vars:
+      TIMESTAMP: '{{now | date "2006-01-02_15-04-05"}}'
+    cmds:
+    - |
+      if [ ! -f "{{.ENV_FILE}}" ]; then
+        echo "❌ Fichier {{.ENV_FILE}} non trouvé"
+        exit 1
+      fi
+
+      backup_file="{{.ENV_FILE}}.backup.{{.TIMESTAMP}}"
+      cp "{{.ENV_FILE}}" "$backup_file"
+
+      echo "✅ Sauvegarde créée : $backup_file"
+      echo "📄 Contenu sauvegardé :"
+      wc -l "$backup_file" | awk '{print "  " $1 " lignes"}'

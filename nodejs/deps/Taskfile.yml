@@ -1,0 +1,256 @@
+version: '3'
+
+# Taskfile pour la gestion des devDependencies Node.js
+
+tasks:
+  add:
+    desc: "Ajoute les devDependencies communes si elles ne sont pas déjà présentes"
+    silent: true
+    summary: |
+      Ajoute intelligemment les devDependencies communes sans version spécifique.
+      Vérifie l'existence avant installation pour éviter les doublons.
+      
+      Variables:
+      - DEV_DEPS: Liste des dépendances (définie globalement)
+      
+      Exemple:
+      task nodejs:deps:add
+    preconditions:
+    - sh: command -v npm
+      msg: "npm n'est pas installé ou accessible"
+    - sh: "test -f package.json"
+      msg: "Le fichier package.json est requis pour cette tâche"
+    cmds:
+    - |
+      # Convertit la variable DEV_DEPS en tableau
+      tool_names=({{.DEV_DEPS}})
+
+      # Vérifie si package.json existe et contient devDependencies
+      if [ ! -f package.json ]; then
+        echo "❌ Erreur: package.json introuvable"
+        exit 1
+      fi
+
+      # Crée la section devDependencies si elle n'existe pas
+      if ! grep -q '"devDependencies"' package.json; then
+        # Ajoute une section devDependencies vide
+        npm pkg set devDependencies='{}'
+      fi
+
+      # Pour chaque dépendance, vérifie si elle existe déjà
+      added=0
+      skipped=0
+      for package_name in "${tool_names[@]}"; do
+        # Vérifie si le package est déjà dans devDependencies
+        if ! npm pkg get devDependencies | grep -q "\"$package_name\""; then
+          echo "📦 Installation de $package_name..."
+          npm install --save-dev "$package_name"
+          added=$((added + 1))
+        else
+          echo "⏭️  $package_name est déjà installé, ignoré."
+          skipped=$((skipped + 1))
+        fi
+      done
+
+      echo ""
+      echo "📊 Résumé :"
+      echo "  ✅ Ajoutées: $added"
+      echo "  ⏭️  Ignorées: $skipped"
+      echo "✅ Vérification des devDependencies terminée."
+
+  add-force:
+    desc: "Ajoute/met à jour toutes les devDependencies communes (force l'installation)"
+    silent: true
+    summary: |
+      Force l'installation/mise à jour de toutes les devDependencies communes.
+      Installe les dernières versions sans vérification préalable.
+      
+      Variables:
+      - DEV_DEPS: Liste des dépendances (définie globalement)
+      
+      Exemple:
+      task nodejs:deps:add-force
+    preconditions:
+    - sh: command -v npm
+      msg: "npm n'est pas installé ou accessible"
+    - sh: "test -f package.json"
+      msg: "Le fichier package.json est requis pour cette tâche"
+    cmds:
+    - |
+      # Convertit la variable DEV_DEPS en tableau
+      tool_names=({{.DEV_DEPS}})
+
+      echo "📦 Installation/mise à jour de toutes les devDependencies..."
+      installed=0
+      for package_name in "${tool_names[@]}"; do
+        echo "📦 Installation de $package_name..."
+        npm install --save-dev "$package_name"
+        installed=$((installed + 1))
+      done
+
+      echo ""
+      echo "📊 Résumé :"
+      echo "  ✅ Installées/mises à jour: $installed"
+      echo "✅ Installation/mise à jour des devDependencies terminée."
+
+  list:
+    desc: "Liste les devDependencies communes disponibles"
+    silent: true
+    summary: |
+      Affiche la liste des devDependencies communes et leur statut d'installation.
+      
+      Variables:
+      - DEV_DEPS: Liste des dépendances (définie globalement)
+    cmds:
+    - |
+      echo "📋 DevDependencies communes disponibles :"
+      echo ""
+      
+      # Convertit la variable DEV_DEPS en tableau, en supprimant les espaces vides
+      all_deps="{{.DEV_DEPS}}"
+      tool_names=()
+      for dep in $all_deps; do
+        if [ -n "$dep" ]; then
+          tool_names+=("$dep")
+        fi
+      done
+      
+      total=${#tool_names[@]}
+      installed=0
+      
+      for package_name in "${tool_names[@]}"; do
+        if [ -f package.json ] && npm pkg get devDependencies | grep -q "\"$package_name\""; then
+          # Récupère la version installée
+          version=$(npm pkg get devDependencies | jq -r ".[\"$package_name\"]" 2>/dev/null || echo "version inconnue")
+          echo "  ✅ $package_name ($version)"
+          installed=$((installed + 1))
+        else
+          echo "  ❌ $package_name (non installé)"
+        fi
+      done
+      
+      echo ""
+      echo "📊 $installed/$total dépendances installées"
+      
+      if [ $installed -lt $total ]; then
+        echo ""
+        echo "💡 Pour installer les dépendances manquantes :"
+        echo "   task nodejs:deps:add"
+      fi
+
+  check:
+    desc: "Vérifie les devDependencies pour les mises à jour"
+    silent: true
+    summary: |
+      Vérifie les devDependencies communes pour les mises à jour disponibles.
+      
+      Exemple:
+      task nodejs:deps:check
+    preconditions:
+    - sh: command -v npm
+      msg: "npm n'est pas installé ou accessible"
+    - sh: "test -f package.json"
+      msg: "Le fichier package.json est requis pour cette tâche"
+    cmds:
+    - |
+      echo "🔍 Vérification des mises à jour disponibles..."
+      echo ""
+      
+      # Convertit la variable DEV_DEPS en tableau
+      tool_names=({{.DEV_DEPS}})
+      
+      outdated=0
+      for package_name in "${tool_names[@]}"; do
+        if npm pkg get devDependencies | grep -q "\"$package_name\""; then
+          # Vérifie si une mise à jour est disponible
+          if npm outdated "$package_name" 2>/dev/null | grep -q "$package_name"; then
+            current=$(npm list "$package_name" --depth=0 2>/dev/null | grep "$package_name" | awk '{print $2}' | sed 's/@//')
+            latest=$(npm view "$package_name" version 2>/dev/null)
+            echo "  📈 $package_name: $current → $latest"
+            outdated=$((outdated + 1))
+          else
+            echo "  ✅ $package_name: à jour"
+          fi
+        else
+          echo "  ⚠️  $package_name: non installé"
+        fi
+      done
+      
+      echo ""
+      if [ $outdated -gt 0 ]; then
+        echo "📊 $outdated dépendance(s) peuvent être mises à jour"
+        echo ""
+        echo "💡 Pour mettre à jour :"
+        echo "   task nodejs:deps:add-force"
+      else
+        echo "✅ Toutes les dépendances sont à jour"
+      fi
+
+  remove:
+    desc: "Supprime les devDependencies communes"
+    silent: true
+    summary: |
+      Supprime toutes les devDependencies communes du projet.
+      
+      Variables:
+      - DEV_DEPS: Liste des dépendances (définie globalement)
+      - CONFIRM: Confirmer la suppression (défaut: demande confirmation)
+      
+      Exemple:
+      task nodejs:deps:remove
+      task nodejs:deps:remove CONFIRM=true
+    vars:
+      CONFIRM: '{{.CONFIRM | default "false"}}'
+    preconditions:
+    - sh: command -v npm
+      msg: "npm n'est pas installé ou accessible"
+    - sh: "test -f package.json"
+      msg: "Le fichier package.json est requis pour cette tâche"
+    cmds:
+    - |
+      echo "🗑️  Suppression des devDependencies communes..."
+      echo ""
+      
+      # Convertit la variable DEV_DEPS en tableau
+      tool_names=({{.DEV_DEPS}})
+      
+      # Liste les dépendances à supprimer
+      to_remove=()
+      for package_name in "${tool_names[@]}"; do
+        if npm pkg get devDependencies | grep -q "\"$package_name\""; then
+          to_remove+=("$package_name")
+          echo "  🗑️  $package_name sera supprimé"
+        fi
+      done
+      
+      if [ ${#to_remove[@]} -eq 0 ]; then
+        echo "✅ Aucune devDependency commune à supprimer"
+        exit 0
+      fi
+      
+      echo ""
+      echo "📊 ${#to_remove[@]} dépendance(s) seront supprimées"
+      
+      # Demande de confirmation
+      if [ "{{.CONFIRM}}" != "true" ]; then
+        echo ""
+        read -p "Confirmer la suppression ? [y/N] " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+          echo "❌ Suppression annulée"
+          exit 0
+        fi
+      fi
+      
+      # Suppression
+      removed=0
+      for package_name in "${to_remove[@]}"; do
+        echo "🗑️  Suppression de $package_name..."
+        npm uninstall "$package_name"
+        removed=$((removed + 1))
+      done
+      
+      echo ""
+      echo "📊 Résumé :"
+      echo "  🗑️  Supprimées: $removed"
+      echo "✅ Suppression des devDependencies terminée."

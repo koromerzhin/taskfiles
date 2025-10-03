@@ -1,3 +1,38 @@
-version: 3
+version: '3'
+
+# Taskfile pour les utilitaires généraux
+
+includes:
+  backup: ./backup/Taskfile.yml
+  clean: ./clean/Taskfile.yml
+  system: ./system/Taskfile.yml
+
+vars:
+  BACKUP_DIR: '{{.BACKUP_DIR | default "./backups"}}'
+  LOG_LEVEL: '{{.LOG_LEVEL | default "INFO"}}'
 
 tasks:
+  # Aliases pour compatibilité avec les anciennes commandes
+  backup-create:
+    desc: "Crée une sauvegarde horodatée du projet (alias)"
+    silent: true
+    cmds:
+    - task: backup:create
+
+  backup-list:
+    desc: "Liste les sauvegardes disponibles (alias)"
+    silent: true
+    cmds:
+    - task: backup:list
+
+  clean-logs:
+    desc: "Nettoie les fichiers de logs anciens (alias)"
+    silent: true
+    cmds:
+    - task: clean:logs
+
+  system-info:
+    desc: "Affiche les informations système (alias)"
+    silent: true
+    cmds:
+    - task: system:info

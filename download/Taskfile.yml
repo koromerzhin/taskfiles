@@ -1,5 +1,25 @@
 version: '3'
 
+vars:
+  PHP_TOOLS_NAMES: |
+    phploc.phar
+    php-cs-fixer.phar
+    phpmd.phar
+    phpcbf.phar
+    phpcs.phar
+    phpstan.phar
+    phpDocumentor.phar
+    behat.phar
+  PHP_TOOLS_URLS: |
+    https://phar.phpunit.de/phploc-7.0.2.phar
+    https://github.com/FriendsOfPHP/PHP-CS-Fixer/releases/download/v3.64.0/php-cs-fixer.phar
+    https://github.com/phpmd/phpmd/releases/download/2.15.0/phpmd.phar
+    https://github.com/squizlabs/PHP_CodeSniffer/releases/download/3.7.2/phpcbf.phar
+    https://github.com/squizlabs/PHP_CodeSniffer/releases/download/3.7.2/phpcs.phar
+    https://github.com/phpstan/phpstan/releases/download/1.12.4/phpstan.phar
+    https://github.com/phpDocumentor/phpDocumentor/releases/download/v3.5.3/phpDocumentor.phar
+    https://github.com/Behat/Behat/releases/download/v3.14.0/behat.phar
+
 tasks:
   php:tools:
     desc: "Télécharge les outils PHP dans un dossier spécifique"
@@ -36,17 +56,29 @@ tasks:
       # Création du dossier de destination
       mkdir -p "{{.TOOLS_DIR}}"
 
-      # Définition des outils à télécharger (format: nom|url)
-      tools=(
-        "phploc.phar|https://phar.phpunit.de/phploc-7.0.2.phar"
-        "php-cs-fixer.phar|https://github.com/FriendsOfPHP/PHP-CS-Fixer/releases/download/v3.64.0/php-cs-fixer.phar"
-        "phpmd.phar|https://github.com/phpmd/phpmd/releases/download/2.15.0/phpmd.phar"
-        "phpcbf.phar|https://github.com/squizlabs/PHP_CodeSniffer/releases/download/3.7.2/phpcbf.phar"
-        "phpcs.phar|https://github.com/squizlabs/PHP_CodeSniffer/releases/download/3.7.2/phpcs.phar"
-        "phpstan.phar|https://github.com/phpstan/phpstan/releases/download/1.12.4/phpstan.phar"
-        "phpDocumentor.phar|https://github.com/phpDocumentor/phpDocumentor/releases/download/v3.5.3/phpDocumentor.phar"
-        "behat.phar|https://github.com/Behat/Behat/releases/download/v3.14.0/behat.phar"
-      )
+      # Récupération des variables et conversion en tableaux
+      tool_names_raw="{{.PHP_TOOLS_NAMES}}"
+      tool_urls_raw="{{.PHP_TOOLS_URLS}}"
+
+      # Conversion en tableaux (compatible bash/zsh)
+      tool_names=()
+      tool_urls=()
+
+      # Lecture ligne par ligne des noms d'outils
+      while IFS= read -r line; do
+        [[ -n "$line" ]] && tool_names+=("$line")
+      done <<< "$tool_names_raw"
+
+      # Lecture ligne par ligne des URLs
+      while IFS= read -r line; do
+        [[ -n "$line" ]] && tool_urls+=("$line")
+      done <<< "$tool_urls_raw"
+
+      # Vérification que les tableaux ont la même taille
+      if [ ${#tool_names[@]} -ne ${#tool_urls[@]} ]; then
+        echo "❌ Erreur: Le nombre de noms d'outils (${#tool_names[@]}) ne correspond pas au nombre d'URLs (${#tool_urls[@]})"
+        exit 1
+      fi
 
       # Compteurs
       downloaded=0
@@ -54,9 +86,9 @@ tasks:
       errors=0
 
       # Téléchargement de chaque outil
-      for tool_info in "${tools[@]}"; do
-        tool=$(echo "$tool_info" | cut -d'|' -f1)
-        url=$(echo "$tool_info" | cut -d'|' -f2)
+      for i in "${!tool_names[@]}"; do
+        tool="${tool_names[$i]}"
+        url="${tool_urls[$i]}"
         target_file="{{.TOOLS_DIR}}/$tool"
         
         echo -n "⬇️  $tool ... "
@@ -67,6 +99,26 @@ tasks:
           skipped=$((skipped + 1))
           continue
         fi
+        
+        # Télécharger le fichier
+        if curl -L -s -o "$target_file" "$url"; then
+          # Vérifier que le téléchargement a réussi
+          if [ -f "$target_file" ] && [ -s "$target_file" ]; then
+            # Rendre le fichier exécutable
+            chmod +x "$target_file"
+            echo "✅ téléchargé"
+            downloaded=$((downloaded + 1))
+          else
+            echo "❌ échec (fichier vide)"
+            rm -f "$target_file"
+            errors=$((errors + 1))
+          fi
+        else
+          echo "❌ échec du téléchargement"
+          rm -f "$target_file"
+          errors=$((errors + 1))
+        fi
+      done
         
         # Télécharger le fichier
         if curl -L -s -o "$target_file" "$url"; then
@@ -145,8 +197,19 @@ tasks:
       echo "📁 Outils PHP dans '{{.TOOLS_DIR}}' :"
       echo ""
 
+      # Conversion de la variable en tableau (suppression des retours à la ligne)
+      tool_names_raw="{{.PHP_TOOLS_NAMES}}"
+      tool_names=()
+
+      # Lecture ligne par ligne des noms d'outils
+      while IFS= read -r line; do
+        [[ -n "$line" ]] && tool_names+=("$line")
+      done <<< "$tool_names_raw"
+
+      total_tools=${#tool_names[@]}
       tools_found=0
-      for tool in phploc.phar php-cs-fixer.phar phpmd.phar phpcbf.phar phpcs.phar phpstan.phar phpDocumentor.phar behat.phar; do
+
+      for tool in "${tool_names[@]}"; do
         if [ -f "{{.TOOLS_DIR}}/$tool" ]; then
           size=$(ls -lh "{{.TOOLS_DIR}}/$tool" | awk '{print $5}')
           perms=$(ls -l "{{.TOOLS_DIR}}/$tool" | awk '{print $1}')
@@ -158,9 +221,9 @@ tasks:
       done
 
       echo ""
-      echo "📊 $tools_found/8 outils présents"
+      echo "📊 $tools_found/$total_tools outils présents"
 
-      if [ $tools_found -lt 8 ]; then
+      if [ $tools_found -lt $total_tools ]; then
         echo ""
         echo "💡 Pour télécharger les outils manquants :"
         echo "   task download:php:tools"

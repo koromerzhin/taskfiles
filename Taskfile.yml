@@ -10,12 +10,14 @@ includes:
   env: ./env/Taskfile.yml
   nodejs: ./nodejs/Taskfile.yml
   download: ./download/Taskfile.yml
+  help: ./help/Taskfile.yml
 
 vars:
   # Variables avec valeurs par défaut depuis .env ou valeurs de fallback
   PROJECT_NAME: '{{.PROJECT_NAME | default "taskfiles-collection"}}'
   PROJECT_VERSION: '1.0.0'
   ENVIRONMENT: '{{.ENVIRONMENT | default "development"}}'
+  TIMESTAMP: '{{now | date "2006-01-02 15:04:05"}}'
 
 tasks:
   default:
@@ -27,6 +29,8 @@ tasks:
     - echo "Tâches globales disponibles :"
     - task --list
     - echo ""
+    - echo "💡 Utilisez 'task <namespace>:<tâche>' pour accéder aux tâches spécialisées"
+    - echo "📚 Utilisez 'task help:<namespace>' pour l'aide détaillée d'un namespace"
 
   info:
     desc: "Affiche les informations du projet avec les variables d'environnement"
@@ -34,11 +38,28 @@ tasks:
     cmds:
     - |
       echo "🛠️  {{.PROJECT_NAME}} v{{.PROJECT_VERSION}} - Collection de Taskfiles"
-      echo "Environnement: {{.ENVIRONMENT}}"
+      echo "📅 {{.TIMESTAMP}}"
+      echo "🌍 Environnement: {{.ENVIRONMENT}}"
+      echo "📂 Répertoire: $(pwd)"
+      echo ""
+      echo "📋 Namespaces disponibles :"
+      echo "  • docker   - Gestion Docker et conteneurs"
+      echo "  • env      - Variables d'environnement"
+      echo "  • nodejs   - Projets Node.js"
+      echo "  • download - Téléchargement d'outils"
+      echo "  • utils    - Utilitaires divers"
 
   help:
     desc: "Affiche l'aide détaillée"
     silent: true
     aliases: [ h ]
     cmds:
-    - task: default
+    - task: help:default
+
+  validate:
+    desc: "Valide l'ensemble du projet"
+    silent: true
+    cmds:
+    - echo "🔍 Validation du projet {{.PROJECT_NAME}}..."
+    - task: env:validate
+    - echo "✅ Validation terminée avec succès"

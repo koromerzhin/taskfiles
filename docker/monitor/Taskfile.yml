@@ -1,5 +1,7 @@
 version: '3'
 
+# Taskfile pour le monitoring Docker - Surveillance et diagnostics
+
 vars:
   IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
   CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
@@ -7,6 +9,7 @@ vars:
   STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
   TIMEOUT: '{{.TIMEOUT | default "300"}}'
   CHECK_INTERVAL: '{{.CHECK_INTERVAL | default "10"}}'
+  LOG_LEVEL: '{{.LOG_LEVEL | default "INFO"}}'
 
 tasks:
   container:start:

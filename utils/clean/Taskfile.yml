@@ -1,0 +1,219 @@
+version: '3'
+
+# Taskfile pour les utilitaires de nettoyage
+
+tasks:
+  logs:
+    desc: "Nettoie les fichiers de logs anciens"
+    silent: true
+    summary: |
+      Supprime les fichiers de logs plus anciens que le nombre de jours spécifié.
+      
+      Variables:
+      - DAYS: Nombre de jours à conserver (défaut: 7)
+      - LOG_PATTERN: Pattern des fichiers logs (défaut: *.log)
+      - DIRS: Dossiers à nettoyer (défaut: .)
+    vars:
+      DAYS: '{{.DAYS | default "7"}}'
+      LOG_PATTERN: '{{.LOG_PATTERN | default "*.log"}}'
+      DIRS: '{{.DIRS | default "."}}'
+    cmds:
+    - |
+      echo "🧹 Nettoyage des logs de plus de {{.DAYS}} jours..."
+      echo "📁 Pattern: {{.LOG_PATTERN}}"
+      echo "📂 Dossiers: {{.DIRS}}"
+      echo ""
+      
+      files_removed=0
+      total_size=0
+      
+      # Conversion des dossiers en tableau
+      IFS=',' read -ra dirs <<< "{{.DIRS}}"
+      
+      for dir in "${dirs[@]}"; do
+        if [ ! -d "$dir" ]; then
+          echo "⚠️  Dossier '$dir' introuvable, ignoré"
+          continue
+        fi
+        
+        echo "🔍 Recherche dans: $dir"
+        
+        # Recherche et suppression des fichiers logs anciens
+        find "$dir" -name "{{.LOG_PATTERN}}" -type f -mtime +{{.DAYS}} | while read -r file; do
+          if [ -f "$file" ]; then
+            size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo "0")
+            echo "🗑️  Suppression: $file ($(numfmt --to=iec $size 2>/dev/null || echo "$size bytes"))"
+            rm -f "$file"
+            files_removed=$((files_removed + 1))
+            total_size=$((total_size + size))
+          fi
+        done
+      done
+      
+      if [ $files_removed -eq 0 ]; then
+        echo "✅ Aucun fichier log ancien trouvé"
+      else
+        echo ""
+        echo "✅ $files_removed fichier(s) supprimé(s)"
+        echo "💾 Espace libéré: $(numfmt --to=iec $total_size 2>/dev/null || echo "$total_size bytes")"
+      fi
+
+  temp:
+    desc: "Nettoie les fichiers temporaires"
+    silent: true
+    summary: |
+      Supprime les fichiers et dossiers temporaires courants.
+      
+      Variables:
+      - TEMP_PATTERNS: Patterns à supprimer (défaut: tmp,temp,*.tmp,*.temp,node_modules/.cache)
+      - DRY_RUN: Mode simulation (défaut: false)
+    vars:
+      TEMP_PATTERNS: '{{.TEMP_PATTERNS | default "tmp,temp,*.tmp,*.temp,node_modules/.cache,dist,build"}}'
+      DRY_RUN: '{{.DRY_RUN | default "false"}}'
+    cmds:
+    - |
+      echo "🧹 Nettoyage des fichiers temporaires..."
+      
+      if [ "{{.DRY_RUN}}" = "true" ]; then
+        echo "🔍 Mode simulation activé (aucune suppression)"
+      fi
+      
+      echo "📋 Patterns: {{.TEMP_PATTERNS}}"
+      echo ""
+      
+      files_removed=0
+      total_size=0
+      
+      # Conversion des patterns en tableau
+      IFS=',' read -ra patterns <<< "{{.TEMP_PATTERNS}}"
+      
+      for pattern in "${patterns[@]}"; do
+        echo "🔍 Recherche: $pattern"
+        
+        # Utilisation de find pour gérer les patterns avec wildcards
+        if [[ "$pattern" == *"*"* ]]; then
+          # Pattern avec wildcard
+          find . -name "$pattern" -type f 2>/dev/null | while read -r file; do
+            if [ -f "$file" ]; then
+              size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo "0")
+              if [ "{{.DRY_RUN}}" = "true" ]; then
+                echo "🔍 Serait supprimé: $file ($(numfmt --to=iec $size 2>/dev/null || echo "$size bytes"))"
+              else
+                echo "🗑️  Suppression: $file ($(numfmt --to=iec $size 2>/dev/null || echo "$size bytes"))"
+                rm -f "$file"
+              fi
+              files_removed=$((files_removed + 1))
+              total_size=$((total_size + size))
+            fi
+          done
+        else
+          # Dossier ou fichier simple
+          if [ -e "$pattern" ]; then
+            if [ -d "$pattern" ]; then
+              size=$(du -sh "$pattern" 2>/dev/null | cut -f1 || echo "0")
+              if [ "{{.DRY_RUN}}" = "true" ]; then
+                echo "🔍 Serait supprimé: $pattern/ ($size)"
+              else
+                echo "🗑️  Suppression: $pattern/ ($size)"
+                rm -rf "$pattern"
+              fi
+            else
+              size=$(stat -f%z "$pattern" 2>/dev/null || stat -c%s "$pattern" 2>/dev/null || echo "0")
+              if [ "{{.DRY_RUN}}" = "true" ]; then
+                echo "🔍 Serait supprimé: $pattern ($(numfmt --to=iec $size 2>/dev/null || echo "$size bytes"))"
+              else
+                echo "🗑️  Suppression: $pattern ($(numfmt --to=iec $size 2>/dev/null || echo "$size bytes"))"
+                rm -f "$pattern"
+              fi
+            fi
+            files_removed=$((files_removed + 1))
+          fi
+        fi
+      done
+      
+      echo ""
+      if [ "{{.DRY_RUN}}" = "true" ]; then
+        echo "🔍 $files_removed élément(s) seraient supprimés en mode réel"
+      elif [ $files_removed -eq 0 ]; then
+        echo "✅ Aucun fichier temporaire trouvé"
+      else
+        echo "✅ $files_removed élément(s) supprimé(s)"
+      fi
+
+  cache:
+    desc: "Nettoie les caches de développement"
+    silent: true
+    summary: |
+      Nettoie les caches des outils de développement courants.
+      
+      Variables:
+      - TOOLS: Outils à nettoyer (défaut: npm,yarn,docker,composer)
+    vars:
+      TOOLS: '{{.TOOLS | default "npm,yarn,docker,composer"}}'
+    cmds:
+    - |
+      echo "🧹 Nettoyage des caches de développement..."
+      echo "🛠️  Outils: {{.TOOLS}}"
+      echo ""
+      
+      # Conversion des outils en tableau
+      IFS=',' read -ra tools <<< "{{.TOOLS}}"
+      
+      for tool in "${tools[@]}"; do
+        echo "🔍 Nettoyage cache: $tool"
+        
+        case "$tool" in
+          "npm")
+            if command -v npm >/dev/null 2>&1; then
+              npm cache clean --force 2>/dev/null && echo "  ✅ Cache npm nettoyé" || echo "  ⚠️  Erreur cache npm"
+            else
+              echo "  ❌ npm non installé"
+            fi
+            ;;
+          "yarn")
+            if command -v yarn >/dev/null 2>&1; then
+              yarn cache clean 2>/dev/null && echo "  ✅ Cache yarn nettoyé" || echo "  ⚠️  Erreur cache yarn"
+            else
+              echo "  ❌ yarn non installé"
+            fi
+            ;;
+          "docker")
+            if command -v docker >/dev/null 2>&1; then
+              docker system prune -f 2>/dev/null && echo "  ✅ Cache docker nettoyé" || echo "  ⚠️  Erreur cache docker"
+            else
+              echo "  ❌ docker non installé"
+            fi
+            ;;
+          "composer")
+            if command -v composer >/dev/null 2>&1; then
+              composer clear-cache 2>/dev/null && echo "  ✅ Cache composer nettoyé" || echo "  ⚠️  Erreur cache composer"
+            else
+              echo "  ❌ composer non installé"
+            fi
+            ;;
+          *)
+            echo "  ❌ Outil '$tool' non supporté"
+            ;;
+        esac
+      done
+      
+      echo ""
+      echo "✅ Nettoyage des caches terminé"
+
+  all:
+    desc: "Nettoie tout (logs, temp, cache)"
+    silent: true
+    summary: |
+      Lance un nettoyage complet : logs anciens, fichiers temporaires et caches.
+      
+      Variables héritées de chaque sous-tâche.
+    cmds:
+    - echo "🧹 Nettoyage complet en cours..."
+    - echo ""
+    - task: clean:logs
+    - echo ""
+    - task: clean:temp
+    - echo ""
+    - task: clean:cache
+    - echo ""
+    - echo "✅ Nettoyage complet terminé"
