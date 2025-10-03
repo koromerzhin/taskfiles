@@ -61,7 +61,25 @@ tasks:
       fi
 
       echo "⬇️  Téléchargement des images depuis '{{.COMPOSE_FILE}}'..."
-      docker-compose -f {{.COMPOSE_FILE}} pull
+
+      # Extraction et téléchargement individuel des images pour éviter les problèmes de dépendances
+      images=$(grep -E "^\s*image:" {{.COMPOSE_FILE}} | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq)
+
+      echo "🔍 Images trouvées à télécharger:"
+      echo "$images" | while read -r image; do
+        if [ -n "$image" ] && [ "$image" != "null" ]; then
+          echo "  🐳 $image"
+        fi
+      done
+      echo ""
+
+      # Téléchargement individuel de chaque image
+      echo "$images" | while read -r image; do
+        if [ -n "$image" ] && [ "$image" != "null" ]; then
+          echo "⬇️  Téléchargement de $image..."
+          docker pull "$image" || echo "⚠️  Échec du téléchargement de $image"
+        fi
+      done
 
   extract:
     desc: "Extrait les images vers un fichier texte"
