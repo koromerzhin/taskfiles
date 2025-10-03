@@ -50,11 +50,24 @@ tasks:
       FORCE: '{{.FORCE | default "false"}}'
     cmds:
     - |
-      echo "📦 Téléchargement des outils PHP dans '{{.TOOLS_DIR}}'..."
+      # Naviguer vers la racine du projet (parent du dossier download)
+      cd ..
+      project_root=$(pwd)
+
+      # Déterminer le chemin absolu du dossier de destination
+      if [[ "{{.TOOLS_DIR}}" == /* ]]; then
+        # Chemin absolu fourni
+        tools_dir="{{.TOOLS_DIR}}"
+      else
+        # Chemin relatif fourni - le baser sur la racine du projet
+        tools_dir="$project_root/{{.TOOLS_DIR}}"
+      fi
+
+      echo "📦 Téléchargement des outils PHP dans '$tools_dir'..."
       echo ""
 
       # Création du dossier de destination
-      mkdir -p "{{.TOOLS_DIR}}"
+      mkdir -p "$tools_dir"
 
       # Récupération des variables et conversion en tableaux
       tool_names_raw="{{.PHP_TOOLS_NAMES}}"
@@ -89,7 +102,7 @@ tasks:
       for i in "${!tool_names[@]}"; do
         tool="${tool_names[$i]}"
         url="${tool_urls[$i]}"
-        target_file="{{.TOOLS_DIR}}/$tool"
+        target_file="$tools_dir/$tool"
         
         echo -n "⬇️  $tool ... "
         
@@ -128,8 +141,8 @@ tasks:
       echo ""
 
       if [ $downloaded -gt 0 ]; then
-        echo "📁 Outils disponibles dans '{{.TOOLS_DIR}}' :"
-        ls -la "{{.TOOLS_DIR}}"/*.phar 2>/dev/null | awk '{print "  " $9 " (" $5 " bytes)"}'
+        echo "📁 Outils disponibles dans '$tools_dir' :"
+        ls -la "$tools_dir"/*.phar 2>/dev/null | awk '{print "  " $9 " (" $5 " bytes)"}'
       fi
 
       if [ $errors -gt 0 ]; then
@@ -168,13 +181,26 @@ tasks:
       TOOLS_DIR: '{{.TOOLS_DIR | default "./tools/php"}}'
     cmds:
     - |
-      if [ ! -d "{{.TOOLS_DIR}}" ]; then
-        echo "❌ Le dossier '{{.TOOLS_DIR}}' n'existe pas"
+      # Naviguer vers la racine du projet (parent du dossier download)
+      cd ..
+      project_root=$(pwd)
+
+      # Déterminer le chemin absolu du dossier de destination
+      if [[ "{{.TOOLS_DIR}}" == /* ]]; then
+        # Chemin absolu fourni
+        tools_dir="{{.TOOLS_DIR}}"
+      else
+        # Chemin relatif fourni - le baser sur la racine du projet
+        tools_dir="$project_root/{{.TOOLS_DIR}}"
+      fi
+
+      if [ ! -d "$tools_dir" ]; then
+        echo "❌ Le dossier '$tools_dir' n'existe pas"
         echo "💡 Utilisez 'task download:php:tools' pour télécharger les outils"
         exit 1
       fi
 
-      echo "📁 Outils PHP dans '{{.TOOLS_DIR}}' :"
+      echo "📁 Outils PHP dans '$tools_dir' :"
       echo ""
 
       # Conversion de la variable en tableau (suppression des retours à la ligne)
@@ -190,9 +216,9 @@ tasks:
       tools_found=0
 
       for tool in "${tool_names[@]}"; do
-        if [ -f "{{.TOOLS_DIR}}/$tool" ]; then
-          size=$(ls -lh "{{.TOOLS_DIR}}/$tool" | awk '{print $5}')
-          perms=$(ls -l "{{.TOOLS_DIR}}/$tool" | awk '{print $1}')
+        if [ -f "$tools_dir/$tool" ]; then
+          size=$(ls -lh "$tools_dir/$tool" | awk '{print $5}')
+          perms=$(ls -l "$tools_dir/$tool" | awk '{print $1}')
           echo "  ✅ $tool ($size) $perms"
           tools_found=$((tools_found + 1))
         else
@@ -223,16 +249,29 @@ tasks:
       TOOLS_DIR: '{{.TOOLS_DIR | default "./tools/php"}}'
     cmds:
     - |
-      if [ ! -d "{{.TOOLS_DIR}}" ]; then
-        echo "❌ Le dossier '{{.TOOLS_DIR}}' n'existe pas"
+      # Naviguer vers la racine du projet (parent du dossier download)
+      cd ..
+      project_root=$(pwd)
+
+      # Déterminer le chemin absolu du dossier de destination
+      if [[ "{{.TOOLS_DIR}}" == /* ]]; then
+        # Chemin absolu fourni
+        tools_dir="{{.TOOLS_DIR}}"
+      else
+        # Chemin relatif fourni - le baser sur la racine du projet
+        tools_dir="$project_root/{{.TOOLS_DIR}}"
+      fi
+
+      if [ ! -d "$tools_dir" ]; then
+        echo "❌ Le dossier '$tools_dir' n'existe pas"
         exit 1
       fi
 
-      echo "🗑️  Suppression du dossier '{{.TOOLS_DIR}}' et de tous les outils..."
+      echo "🗑️  Suppression du dossier '$tools_dir' et de tous les outils..."
       read -p "Êtes-vous sûr ? [y/N] " -n 1 -r
       echo
       if [[ $REPLY =~ ^[Yy]$ ]]; then
-        rm -rf "{{.TOOLS_DIR}}"
+        rm -rf "$tools_dir"
         echo "✅ Dossier supprimé"
       else
         echo "❌ Suppression annulée"
