@@ -302,8 +302,9 @@ tasks:
       start_time=$(date +%s)
       timeout_time=$((start_time + {{.TIMEOUT}}))
 
-      # Convertir la liste en tableau
-      IFS=',' read -ra CONTAINER_ARRAY <<< "{{.CONTAINERS}}"
+      # Convertir la liste en format compatible POSIX
+      containers_list="{{.CONTAINERS}}"
+      containers_clean=$(echo "$containers_list" | tr ',' ' ')
 
       while true; do
         current_time=$(date +%s)
@@ -315,7 +316,7 @@ tasks:
         
         all_ready=true
         
-        for container in "${CONTAINER_ARRAY[@]}"; do
+        for container in $containers_clean; do
           container=$(echo "$container" | xargs)  # Trim whitespace
           
           if ! docker ps --filter "name={{.STACK_NAME}}_${container}" --format "{{.Names}}" | grep -q "{{.STACK_NAME}}_${container}"; then
