@@ -417,18 +417,22 @@ tasks:
       TIMEOUT: '{{.TIMEOUT | default "300"}}'
       CHECK_INTERVAL: '{{.CHECK_INTERVAL | default "10"}}'
       EXCLUDE_STATES: '{{.EXCLUDE_STATES | default "Complete,Failed,Rejected"}}'
+      SPECIFIC_SERVICES: '{{.SPECIFIC_SERVICES | default ""}}'
     summary: |
       Vérifie que tous les services actifs d'une stack sont en bonne santé.
       Ignore automatiquement les services en état Complete, Failed, ou Rejected.
+      Si SPECIFIC_SERVICES est défini, vérifie uniquement ces services.
 
       Variables:
       - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
       - TIMEOUT: Timeout en secondes (défaut: 300)
       - CHECK_INTERVAL: Intervalle entre les vérifications en secondes (défaut: 10)
       - EXCLUDE_STATES: États à ignorer séparés par des virgules (défaut: "Complete,Failed,Rejected")
+      - SPECIFIC_SERVICES: Services spécifiques à vérifier, séparés par des virgules (défaut: tous)
 
       Exemples:
       task docker:stack:check:services:health STACK_NAME=lampy
+      task docker:stack:check:services:health STACK_NAME=lampy SPECIFIC_SERVICES="mercure,redis,traefik"
       task docker:stack:check:services:health STACK_NAME=production TIMEOUT=600
       task docker:stack:check:services:health STACK_NAME=dev EXCLUDE_STATES="Complete,Shutdown"
     cmds:
@@ -442,6 +446,17 @@ tasks:
       fi
 
       echo "🔍 Vérification de la santé des services de la stack '{{.STACK_NAME}}'..."
+
+      # Déterminer quels services vérifier
+      if [ -n "{{.SPECIFIC_SERVICES}}" ]; then
+        echo "🎯 Services ciblés : {{.SPECIFIC_SERVICES}}"
+        check_mode="specific"
+        target_services=$(echo "{{.SPECIFIC_SERVICES}}" | tr ',' ' ')
+      else
+        echo "🌐 Mode : Tous les services actifs"
+        check_mode="all"
+      fi
+
       echo "🕐 Timeout: {{.TIMEOUT}}s, Intervalle de vérification: {{.CHECK_INTERVAL}}s"
       echo "🚫 États ignorés: {{.EXCLUDE_STATES}}"
       echo ""
@@ -471,67 +486,115 @@ tasks:
           exit 1
         fi
         
-        # Obtenir tous les services de la stack
-        total_services=$(docker service ls --filter "label=com.docker.stack.namespace={{.STACK_NAME}}" --format "{{.Name}}" | wc -l)
-        
-        if [ $total_services -eq 0 ]; then
-          echo "❌ Aucun service trouvé dans la stack '{{.STACK_NAME}}'"
-          exit 1
-        fi
-
         # Compter les services selon leur état
         running_count=0
         excluded_count=0
         pending_count=0
         error_count=0
+        expected_running=0
         
         service_details=""
         excluded_services=""
         pending_services=""
         error_services=""
 
-        # Analyser chaque service
-        for service_name in $(docker service ls --filter "label=com.docker.stack.namespace={{.STACK_NAME}}" --format "{{.Name}}"); do
-          # Obtenir les informations détaillées du service
-          replicas=$(docker service ls --filter "name=$service_name" --format "{{.Replicas}}")
-          
-          # Obtenir l'état des tâches pour ce service
-          task_states=$(docker service ps $service_name --format "{{.CurrentState}}" --no-trunc)
-          desired_states=$(docker service ps $service_name --format "{{.DesiredState}}" --no-trunc)
-          
-          # Analyser l'état du service
-          service_short_name=$(echo "$service_name" | sed "s/^{{.STACK_NAME}}_//")
-          
-          # Vérifier si le service a des tâches dans les états à exclure
-          if echo "$task_states" | grep -E "($exclude_pattern)" >/dev/null 2>&1; then
-            excluded_count=$((excluded_count + 1))
-            excluded_services="$excluded_services $service_short_name"
-            continue
-          fi
-          
-          # Vérifier si le service est en cours d'exécution (Running)
-          if echo "$task_states" | grep -q "Running" && [ "$replicas" != "0/1" ] && [ "$replicas" != "0/0" ]; then
-            running_count=$((running_count + 1))
-            service_details="$service_details $service_short_name"
-          else
-            # Vérifier s'il y a des erreurs
-            if docker service ps $service_name --format "{{.Error}}" | grep -v "^$" >/dev/null 2>&1; then
-              error_count=$((error_count + 1))
-              error_services="$error_services $service_short_name"
-            else
-              pending_count=$((pending_count + 1))
-              pending_services="$pending_services $service_short_name"
+        if [ "$check_mode" = "specific" ]; then
+          # Mode spécifique : vérifier uniquement les services demandés
+          for service_short_name in $target_services; do
+            service_short_name=$(echo "$service_short_name" | xargs)  # Trim whitespace
+            service_full_name="{{.STACK_NAME}}_${service_short_name}"
+            
+            # Vérifier que le service existe
+            if ! docker service ls --filter "name=$service_full_name" --format "{{.Name}}" | grep -q "^$service_full_name$"; then
+              echo "❌ Service '$service_full_name' non trouvé dans la stack"
+              continue
             fi
+            
+            expected_running=$((expected_running + 1))
+            
+            # Obtenir l'état des tâches pour ce service
+            task_states=$(docker service ps $service_full_name --format "{{.CurrentState}}" --no-trunc)
+            replicas=$(docker service ls --filter "name=$service_full_name" --format "{{.Replicas}}")
+            
+            # Vérifier si le service a des tâches dans les états à exclure
+            if echo "$task_states" | grep -E "($exclude_pattern)" >/dev/null 2>&1; then
+              excluded_count=$((excluded_count + 1))
+              excluded_services="$excluded_services $service_short_name"
+              expected_running=$((expected_running - 1))
+              continue
+            fi
+            
+            # Vérifier si le service est en cours d'exécution (Running)
+            if echo "$task_states" | grep -q "Running" && [ "$replicas" != "0/1" ] && [ "$replicas" != "0/0" ]; then
+              running_count=$((running_count + 1))
+              service_details="$service_details $service_short_name"
+            else
+              # Vérifier s'il y a des erreurs
+              if docker service ps $service_full_name --format "{{.Error}}" | grep -v "^$" >/dev/null 2>&1; then
+                error_count=$((error_count + 1))
+                error_services="$error_services $service_short_name"
+              else
+                pending_count=$((pending_count + 1))
+                pending_services="$pending_services $service_short_name"
+              fi
+            fi
+          done
+        else
+          # Mode tous les services : analyser tous les services de la stack
+          total_services=$(docker service ls --filter "label=com.docker.stack.namespace={{.STACK_NAME}}" --format "{{.Name}}" | wc -l)
+          
+          if [ $total_services -eq 0 ]; then
+            echo "❌ Aucun service trouvé dans la stack '{{.STACK_NAME}}'"
+            exit 1
           fi
-        done
-        
-        # Calcul des services actifs attendus (total - exclus)
-        expected_running=$((total_services - excluded_count))
+
+          # Analyser chaque service
+          for service_name in $(docker service ls --filter "label=com.docker.stack.namespace={{.STACK_NAME}}" --format "{{.Name}}"); do
+            # Obtenir les informations détaillées du service
+            replicas=$(docker service ls --filter "name=$service_name" --format "{{.Replicas}}")
+            
+            # Obtenir l'état des tâches pour ce service
+            task_states=$(docker service ps $service_name --format "{{.CurrentState}}" --no-trunc)
+            
+            # Analyser l'état du service
+            service_short_name=$(echo "$service_name" | sed "s/^{{.STACK_NAME}}_//")
+            
+            # Vérifier si le service a des tâches dans les états à exclure
+            if echo "$task_states" | grep -E "($exclude_pattern)" >/dev/null 2>&1; then
+              excluded_count=$((excluded_count + 1))
+              excluded_services="$excluded_services $service_short_name"
+              continue
+            fi
+            
+            expected_running=$((expected_running + 1))
+            
+            # Vérifier si le service est en cours d'exécution (Running)
+            if echo "$task_states" | grep -q "Running" && [ "$replicas" != "0/1" ] && [ "$replicas" != "0/0" ]; then
+              running_count=$((running_count + 1))
+              service_details="$service_details $service_short_name"
+            else
+              # Vérifier s'il y a des erreurs
+              if docker service ps $service_name --format "{{.Error}}" | grep -v "^$" >/dev/null 2>&1; then
+                error_count=$((error_count + 1))
+                error_services="$error_services $service_short_name"
+              else
+                pending_count=$((pending_count + 1))
+                pending_services="$pending_services $service_short_name"
+              fi
+            fi
+          done
+        fi
         
         # Affichage de l'état
         elapsed=$((current_time - start_time))
         echo "⏳ Vérification #$check_count (${elapsed}s/{{.TIMEOUT}}s)"
-        echo "   📊 Total: $total_services services | Actifs attendus: $expected_running"
+        
+        if [ "$check_mode" = "specific" ]; then
+          echo "   🎯 Services ciblés: $(echo "{{.SPECIFIC_SERVICES}}" | tr ',' ' ' | wc -w) | Actifs attendus: $expected_running"
+        else
+          total_services_in_stack=$(docker service ls --filter "label=com.docker.stack.namespace={{.STACK_NAME}}" --format "{{.Name}}" | wc -l)
+          echo "   📊 Total: $total_services_in_stack services | Actifs attendus: $expected_running"
+        fi
         
         if [ $running_count -gt 0 ]; then
           echo "   ✅ En cours ($running_count/$expected_running):$service_details"
@@ -552,7 +615,7 @@ tasks:
         # Vérifier si tous les services attendus sont en cours
         if [ $running_count -eq $expected_running ] && [ $error_count -eq 0 ]; then
           echo ""
-          echo "🎉 Succès ! Tous les services actifs sont en bonne santé !"
+          echo "🎉 Succès ! Tous les services ciblés sont en bonne santé !"
           echo "⏱️  Temps total d'attente : ${elapsed}s"
           echo ""
           echo "📋 Résumé final :"
@@ -561,19 +624,43 @@ tasks:
             echo "   🚫 Services ignorés : $excluded_count"
           fi
           echo ""
-          echo "📋 Services actifs :"
-          for service_name in $(docker service ls --filter "label=com.docker.stack.namespace={{.STACK_NAME}}" --format "{{.Name}}"); do
-            replicas=$(docker service ls --filter "name=$service_name" --format "{{.Replicas}}")
-            task_state=$(docker service ps $service_name --format "{{.CurrentState}}" --no-trunc | head -n 1)
-            service_short_name=$(echo "$service_name" | sed "s/^{{.STACK_NAME}}_//")
-            
-            # Ignorer les services exclus
-            if echo "$task_state" | grep -E "($exclude_pattern)" >/dev/null 2>&1; then
-              echo "   🚫 $service_short_name - $task_state (ignoré)"
-            else
-              echo "   ✅ $service_short_name - $task_state ($replicas)"
-            fi
-          done
+          echo "📋 Services vérifiés :"
+          
+          if [ "$check_mode" = "specific" ]; then
+            # Afficher uniquement les services spécifiés
+            for service_short_name in $target_services; do
+              service_short_name=$(echo "$service_short_name" | xargs)
+              service_full_name="{{.STACK_NAME}}_${service_short_name}"
+              
+              if docker service ls --filter "name=$service_full_name" --format "{{.Name}}" | grep -q "^$service_full_name$"; then
+                replicas=$(docker service ls --filter "name=$service_full_name" --format "{{.Replicas}}")
+                task_state=$(docker service ps $service_full_name --format "{{.CurrentState}}" --no-trunc | head -n 1)
+                
+                # Ignorer les services exclus dans l'affichage
+                if echo "$task_state" | grep -E "($exclude_pattern)" >/dev/null 2>&1; then
+                  echo "   🚫 $service_short_name - $task_state (ignoré)"
+                else
+                  echo "   ✅ $service_short_name - $task_state ($replicas)"
+                fi
+              else
+                echo "   ❓ $service_short_name - Service non trouvé"
+              fi
+            done
+          else
+            # Afficher tous les services de la stack
+            for service_name in $(docker service ls --filter "label=com.docker.stack.namespace={{.STACK_NAME}}" --format "{{.Name}}"); do
+              replicas=$(docker service ls --filter "name=$service_name" --format "{{.Replicas}}")
+              task_state=$(docker service ps $service_name --format "{{.CurrentState}}" --no-trunc | head -n 1)
+              service_short_name=$(echo "$service_name" | sed "s/^{{.STACK_NAME}}_//")
+              
+              # Ignorer les services exclus
+              if echo "$task_state" | grep -E "($exclude_pattern)" >/dev/null 2>&1; then
+                echo "   🚫 $service_short_name - $task_state (ignoré)"
+              else
+                echo "   ✅ $service_short_name - $task_state ($replicas)"
+              fi
+            done
+          fi
           break
         fi
         
