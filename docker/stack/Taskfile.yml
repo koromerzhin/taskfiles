@@ -662,6 +662,14 @@ tasks:
             done
           fi
           break
+        else
+          # Debug: afficher pourquoi on n'a pas atteint le succès
+          if [ $running_count -ne $expected_running ]; then
+            echo "   🔍 Debug: Services en cours ($running_count) ≠ Services attendus ($expected_running)"
+          fi
+          if [ $error_count -ne 0 ]; then
+            echo "   🔍 Debug: Services en erreur ($error_count) > 0"
+          fi
         fi
         
         echo ""
