@@ -630,8 +630,6 @@ tasks:
               continue
             fi
             
-            expected_running=$((expected_running + 1))
-            
             # Obtenir l'état des tâches pour ce service
             task_states=$(docker service ps $service_full_name --format "{{`{{.CurrentState}}`}}" --no-trunc)
             replicas=$(docker service ls --filter "name=$service_full_name" --format "{{`{{.Replicas}}`}}")
@@ -640,9 +638,11 @@ tasks:
             if echo "$task_states" | grep -E "($exclude_pattern)" >/dev/null 2>&1; then
               excluded_count=$((excluded_count + 1))
               excluded_services="$excluded_services $service_short_name"
-              expected_running=$((expected_running - 1))
               continue
             fi
+            
+            # Si on arrive ici, le service doit être compté comme "attendu"
+            expected_running=$((expected_running + 1))
             
             # Vérifier si le service est en cours d'exécution (Running)
             if echo "$task_states" | grep -q "Running" && [ "$replicas" != "0/1" ] && [ "$replicas" != "0/0" ]; then
