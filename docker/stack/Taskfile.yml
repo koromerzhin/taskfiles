@@ -240,99 +240,149 @@ tasks:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
     summary: |
-      Vérifie que les conteneurs d'une liste sont tous actifs et en bonne santé.
+      Vérifie que les conteneurs ou services spécifiés sont tous actifs et en bonne santé.
       Attend et vérifie périodiquement jusqu'à ce que tous soient prêts ou timeout.
 
       Variables:
       - CONTAINERS: Liste des conteneurs séparés par des virgules (ex: "traefik,portainer")
+      - SERVICES: Liste des services séparés par des virgules (ex: "mariadb,mercure,redis")
       - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
       - TIMEOUT: Timeout en secondes (défaut: 300)
       - CHECK_INTERVAL: Intervalle entre les vérifications en secondes (défaut: 10)
 
       Exemple:
       task docker:stack:check:containers:ready CONTAINERS="traefik,portainer" STACK_NAME=mon-app
+      task docker:stack:check:containers:ready SERVICES="mariadb,mercure,redis" STACK_NAME=mon-app
     vars:
       TIMEOUT: '{{.TIMEOUT | default "300"}}'
       CHECK_INTERVAL: '{{.CHECK_INTERVAL | default "10"}}'
       STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
       CONTAINERS: '{{.CONTAINERS | default ""}}'
+      SERVICES: '{{.SERVICES | default ""}}'
     cmds:
     - |
-      if [ -z "{{.CONTAINERS}}" ]; then
-        echo "❌ CONTAINERS est requis (ex: 'traefik,portainer')"
+      if [ -z "{{.CONTAINERS}}" ] && [ -z "{{.SERVICES}}" ]; then
+        echo "❌ CONTAINERS ou SERVICES est requis (ex: 'traefik,portainer' ou 'mariadb,mercure,redis')"
         exit 1
       fi
 
-      echo "🔍 Vérification de l'état des conteneurs : {{.CONTAINERS}}"
-      echo "🕐 Timeout: {{.TIMEOUT}}s, Intervalle de vérification: {{.CHECK_INTERVAL}}s"
-      echo ""
-
       start_time=$(date +%s)
       timeout_time=$((start_time + {{.TIMEOUT}}))
-
-      # Convertir la liste en tableau compatible POSIX
-      containers_list="{{.CONTAINERS}}"
-      containers_clean=$(echo "$containers_list" | tr ',' ' ')
-
-      # Compteur de vérifications
       check_count=0
+
+      if [ -n "{{.CONTAINERS}}" ]; then
+        echo "🔍 Vérification de l'état des conteneurs : {{.CONTAINERS}}"
+        containers_list="{{.CONTAINERS}}"
+        containers_clean=$(echo "$containers_list" | tr ',' ' ')
+      fi
+
+      if [ -n "{{.SERVICES}}" ]; then
+        echo "🔍 Vérification de l'état des services : {{.SERVICES}}"
+        services_list="{{.SERVICES}}"
+        services_clean=$(echo "$services_list" | tr ',' ' ')
+      fi
+
+      echo "🕐 Timeout: {{.TIMEOUT}}s, Intervalle de vérification: {{.CHECK_INTERVAL}}s"
+      echo ""
 
       while true; do
         current_time=$(date +%s)
         check_count=$((check_count + 1))
-        
-        # Vérifier le timeout
+
+        # Timeout
         if [ $current_time -gt $timeout_time ]; then
           echo ""
-          echo "❌ Timeout atteint ({{.TIMEOUT}}s). Tous les conteneurs ne sont pas encore prêts."
-          echo "📋 État final des conteneurs :"
-          docker ps --filter "name={{.STACK_NAME}}" --format "table {{.Names}}\t{{.Status}}"
+          echo "❌ Timeout atteint ({{.TIMEOUT}}s). Tous les éléments ne sont pas encore prêts."
+          if [ -n "{{.CONTAINERS}}" ]; then
+            echo "📋 État final des conteneurs :"
+            docker ps --filter "name={{.STACK_NAME}}" --format "table {{.Names}}\t{{.Status}}"
+          fi
+          if [ -n "{{.SERVICES}}" ]; then
+            echo "📋 État final des services :"
+            for service in $services_clean; do
+              service=$(echo "$service" | xargs)
+              service_full_name="{{.STACK_NAME}}_${service}"
+              replicas=$(docker service ls --filter "name=$service_full_name" --format "{{.Replicas}}" 2>/dev/null || echo "non trouvé")
+              echo "   $service: $replicas"
+            done
+          fi
           exit 1
         fi
-        
+
         all_ready=true
         ready_containers=""
         missing_containers=""
-        
-        # Vérifier chaque conteneur
-        for container in $containers_clean; do
-          container=$(echo "$container" | xargs)  # Trim whitespace
-          
-          if docker ps --filter "name={{.STACK_NAME}}_${container}" --format "{{.Names}}" | grep -q "{{.STACK_NAME}}_${container}"; then
-            ready_containers="$ready_containers $container"
-          else
-            missing_containers="$missing_containers $container"
-            all_ready=false
-          fi
-        done
-        
+        ready_services=""
+        pending_services=""
+
+        # Vérification des conteneurs
+        if [ -n "{{.CONTAINERS}}" ]; then
+          for container in $containers_clean; do
+            container=$(echo "$container" | xargs)
+            if docker ps --filter "name={{.STACK_NAME}}_${container}" --format "{{.Names}}" | grep -q "{{.STACK_NAME}}_${container}"; then
+              ready_containers="$ready_containers $container"
+            else
+              missing_containers="$missing_containers $container"
+              all_ready=false
+            fi
+          done
+        fi
+
+        # Vérification des services
+        if [ -n "{{.SERVICES}}" ]; then
+          for service in $services_clean; do
+            service=$(echo "$service" | xargs)
+            service_full_name="{{.STACK_NAME}}_${service}"
+            if docker service ls --filter "name=$service_full_name" --format "{{.Replicas}}" | grep -q "1/1\|[2-9]/[2-9]"; then
+              ready_services="$ready_services $service"
+            else
+              pending_services="$pending_services $service"
+              all_ready=false
+            fi
+          done
+        fi
+
         # Affichage de l'état
         elapsed=$((current_time - start_time))
         echo "⏳ Vérification #$check_count (${elapsed}s/{{.TIMEOUT}}s)"
-        
         if [ -n "$ready_containers" ]; then
-          echo "  ✅ Prêts     :$ready_containers"
+          echo "  ✅ Conteneurs prêts     :$ready_containers"
         fi
-        
         if [ -n "$missing_containers" ]; then
-          echo "  ⏳ En attente :$missing_containers"
+          echo "  ⏳ Conteneurs en attente :$missing_containers"
         fi
-        
-        # Si tous les conteneurs sont prêts, on sort de la boucle
+        if [ -n "$ready_services" ]; then
+          echo "  ✅ Services actifs      :$ready_services"
+        fi
+        if [ -n "$pending_services" ]; then
+          echo "  ⏳ Services en attente  :$pending_services"
+        fi
+
+        # Succès si tout est prêt
         if [ "$all_ready" = true ]; then
           echo ""
-          echo "🎉 Succès ! Tous les conteneurs sont actifs !"
+          echo "🎉 Succès ! Tous les éléments sont actifs !"
           echo "⏱️  Temps total d'attente : ${elapsed}s"
-          echo ""
-          echo "📋 Conteneurs actifs :"
-          for container in $containers_clean; do
-            container=$(echo "$container" | xargs)
-            status=$(docker ps --filter "name={{.STACK_NAME}}_${container}" --format "{{.Status}}")
-            echo "  ✅ ${container} - $status"
-          done
+          if [ -n "{{.CONTAINERS}}" ]; then
+            echo "📋 Conteneurs actifs :"
+            for container in $containers_clean; do
+              container=$(echo "$container" | xargs)
+              status=$(docker ps --filter "name={{.STACK_NAME}}_${container}" --format "{{.Status}}")
+              echo "  ✅ ${container} - $status"
+            done
+          fi
+          if [ -n "{{.SERVICES}}" ]; then
+            echo "📋 Services vérifiés :"
+            for service in $services_clean; do
+              service=$(echo "$service" | xargs)
+              service_full_name="{{.STACK_NAME}}_${service}"
+              replicas=$(docker service ls --filter "name=$service_full_name" --format "{{.Replicas}}")
+              echo "  ✅ $service ($replicas)"
+            done
+          fi
           break
         fi
-        
+
         echo ""
         sleep {{.CHECK_INTERVAL}}
       done
@@ -403,126 +453,6 @@ tasks:
         
         elapsed=$((current_time - start_time))
         echo "⏳ Attente... (${elapsed}s/{{.TIMEOUT}}s)"
-        sleep {{.CHECK_INTERVAL}}
-      done
-
-  check:services:simple:
-    desc: "Vérifie que les services spécifiés d'une stack sont actifs (version simplifiée)"
-    silent: true
-    preconditions:
-    - sh: command -v docker
-      msg: "Docker n'est pas installé ou accessible"
-    vars:
-      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
-      SERVICES: '{{.SERVICES | default ""}}'
-      TIMEOUT: '{{.TIMEOUT | default "300"}}'
-      CHECK_INTERVAL: '{{.CHECK_INTERVAL | default "10"}}'
-    summary: |
-      Vérifie que les services spécifiés d'une stack sont actifs et en bonne santé.
-      Ignore complètement les autres services de la stack.
-
-      Variables:
-      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
-      - SERVICES: Services à vérifier, séparés par des virgules (requis)
-      - TIMEOUT: Timeout en secondes (défaut: 300)
-      - CHECK_INTERVAL: Intervalle entre les vérifications en secondes (défaut: 10)
-
-      Exemples:
-      task docker:stack:check:services:simple STACK_NAME=lampy SERVICES="mariadb,mercure,redis"
-      task docker:stack:check:services:simple STACK_NAME=production SERVICES="web,api,db" TIMEOUT=600
-    cmds:
-    - |
-      if [ -z "{{.SERVICES}}" ]; then
-        echo "❌ SERVICES est requis (ex: 'mariadb,mercure,redis')"
-        exit 1
-      fi
-
-      # Vérifier que la stack existe
-      if ! docker stack ls | awk 'NR>1 {print $1}' | grep -q "^{{.STACK_NAME}}$"; then
-        echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
-        echo "📋 Stacks disponibles :"
-        docker stack ls | awk 'NR>1 {print $1}'
-        exit 1
-      fi
-
-      echo "🔍 Vérification des services : {{.SERVICES}}"
-      echo "📦 Stack : {{.STACK_NAME}}"
-      echo "🕐 Timeout: {{.TIMEOUT}}s, Intervalle: {{.CHECK_INTERVAL}}s"
-      echo ""
-
-      start_time=$(date +%s)
-      timeout_time=$((start_time + {{.TIMEOUT}}))
-      check_count=0
-
-      # Convertir la liste des services en tableau
-      services_list="{{.SERVICES}}"
-      services_clean=$(echo "$services_list" | tr ',' ' ')
-
-      while true; do
-        current_time=$(date +%s)
-        check_count=$((check_count + 1))
-        
-        # Vérifier le timeout
-        if [ $current_time -gt $timeout_time ]; then
-          echo ""
-          echo "❌ Timeout atteint ({{.TIMEOUT}}s). Tous les services ne sont pas encore actifs."
-          echo "📋 État final :"
-          for service in $services_clean; do
-            service=$(echo "$service" | xargs)
-            service_full_name="{{.STACK_NAME}}_${service}"
-            replicas=$(docker service ls --filter "name=$service_full_name" --format "{{.Replicas}}" 2>/dev/null || echo "non trouvé")
-            echo "   $service: $replicas"
-          done
-          exit 1
-        fi
-        
-        # Vérifier chaque service
-        all_ready=true
-        ready_services=""
-        pending_services=""
-        
-        for service in $services_clean; do
-          service=$(echo "$service" | xargs)  # Trim whitespace
-          service_full_name="{{.STACK_NAME}}_${service}"
-          
-          # Vérifier que le service existe et est actif
-          if docker service ls --filter "name=$service_full_name" --format "{{.Replicas}}" | grep -q "1/1\|[2-9]/[2-9]"; then
-            ready_services="$ready_services $service"
-          else
-            pending_services="$pending_services $service"
-            all_ready=false
-          fi
-        done
-        
-        # Affichage de l'état
-        elapsed=$((current_time - start_time))
-        echo "⏳ Vérification #$check_count (${elapsed}s/{{.TIMEOUT}}s)"
-        
-        if [ -n "$ready_services" ]; then
-          echo "  ✅ Actifs    :$ready_services"
-        fi
-        
-        if [ -n "$pending_services" ]; then
-          echo "  ⏳ En attente :$pending_services"
-        fi
-        
-        # Si tous les services sont prêts, succès !
-        if [ "$all_ready" = true ]; then
-          echo ""
-          echo "🎉 Succès ! Tous les services spécifiés sont actifs !"
-          echo "⏱️  Temps total : ${elapsed}s"
-          echo ""
-          echo "📋 Services vérifiés :"
-          for service in $services_clean; do
-            service=$(echo "$service" | xargs)
-            service_full_name="{{.STACK_NAME}}_${service}"
-            replicas=$(docker service ls --filter "name=$service_full_name" --format "{{.Replicas}}")
-            echo "  ✅ $service ($replicas)"
-          done
-          break
-        fi
-        
-        echo ""
         sleep {{.CHECK_INTERVAL}}
       done
 
