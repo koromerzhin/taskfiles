@@ -57,7 +57,7 @@ tasks:
       fi
 
       echo "🔨 Construction des images..."
-      docker-compose -f {{.COMPOSE_FILE}} build
+      docker compose -f {{.COMPOSE_FILE}} build
 
       echo "🚀 Déploiement de la stack '{{.STACK_NAME}}'..."
       docker stack deploy -c {{.COMPOSE_FILE}} {{.STACK_NAME}}
@@ -230,7 +230,7 @@ tasks:
       fi
 
       echo "✅ Validation du fichier '{{.COMPOSE_FILE}}'..."
-      docker-compose -f {{.COMPOSE_FILE}} config
+      docker compose -f {{.COMPOSE_FILE}} config
       echo "✅ Fichier valide"
 
   check:containers:ready:
