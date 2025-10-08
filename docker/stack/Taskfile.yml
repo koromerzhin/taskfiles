@@ -372,15 +372,6 @@ tasks:
               echo "  ✅ ${container} - $status"
             done
           fi
-          if [ -n "{{.SERVICES}}" ]; then
-            echo "📋 Services vérifiés :"
-            for service in $services_clean; do
-              service=$(echo "$service" | xargs)
-              service_full_name="{{.STACK_NAME}}_${service}"
-              replicas=$(docker service ls --filter "name=$service_full_name" --format "{{.Replicas}}")
-              echo "  ✅ $service ($replicas)"
-            done
-          fi
           break
         fi
 
