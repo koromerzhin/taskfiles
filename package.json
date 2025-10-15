@@ -14,9 +14,11 @@
   },
   "homepage": "https://github.com/koromerzhin/taskfiles#readme",
   "scripts": {
-    "release": "release-it"
+    "release": "release-it",
+    "lint:markdown": "markdownlint README.md"
   },
   "devDependencies": {
+    "markdownlint-cli": "^0.44.0",
     "release-it": "^17.11.0"
   }
 }
