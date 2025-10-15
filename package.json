@@ -1,0 +1,22 @@
+{
+  "name": "@koromerzhin/taskfiles",
+  "version": "1.0.0",
+  "description": "Une collection de scripts Taskfiles réutilisables pour automatiser les tâches courantes dans différents types de projets de développement.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/koromerzhin/taskfiles.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/koromerzhin/taskfiles/issues"
+  },
+  "homepage": "https://github.com/koromerzhin/taskfiles#readme",
+  "scripts": {
+    "release": "release-it"
+  },
+  "devDependencies": {
+    "release-it": "^17.11.0"
+  }
+}
