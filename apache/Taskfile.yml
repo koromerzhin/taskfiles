@@ -7,6 +7,7 @@ tasks:
       APACHE_DOCUMENT_ROOT: '{{.APACHE_DOCUMENT_ROOT | default "/var/www/public"}}'
       DEFAULT_FILE: '{{.DEFAULT_FILE | default "./conf/apache2/000-default.conf"}}'
       APACHE_CONF_FILE: '{{.APACHE_CONF_FILE | default "./conf/apache2/apache2.conf"}}'
+      SERVERNAME: '{{.SERVERNAME | default "localhost"}}'
     silent: true
     cmds:
     - sed -ri -e 's|\$\{APACHE_DOCUMENT_ROOT\}|{.APACHE_DOCUMENT_ROOT}|g' {{.DEFAULT_FILE}}
