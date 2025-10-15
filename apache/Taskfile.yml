@@ -10,9 +10,9 @@ tasks:
       SERVERNAME: '{{.SERVERNAME | default "localhost"}}'
     silent: true
     cmds:
-    - sed -ri -e 's|\$\{APACHE_DOCUMENT_ROOT\}|{.APACHE_DOCUMENT_ROOT}|g' {{.DEFAULT_FILE}}
+    - sed -ri -e 's|\$\{APACHE_DOCUMENT_ROOT\}|{{.APACHE_DOCUMENT_ROOT}}|g' {{.DEFAULT_FILE}}
     - sed -ri -e 's|#ServerName www.example.com|ServerName {{.SERVERNAME}}|g' {{.DEFAULT_FILE}}
-    - sed -ri -e 's|\$\{APACHE_DOCUMENT_ROOT\}|{.APACHE_DOCUMENT_ROOT}|g' {{.APACHE_CONF_FILE}}
+    - sed -ri -e 's|\$\{APACHE_DOCUMENT_ROOT\}|{{.APACHE_DOCUMENT_ROOT}}|g' {{.APACHE_CONF_FILE}}
     - |
       sed -i '/^# Global configuration/a\
       #\
