@@ -11,6 +11,7 @@ includes:
   nodejs: ./nodejs/Taskfile.yml
   download: ./download/Taskfile.yml
   help: ./help/Taskfile.yml
+  apache: ./apache/Taskfile.yml
 
 vars:
   # Variables avec valeurs par défaut depuis .env ou valeurs de fallback

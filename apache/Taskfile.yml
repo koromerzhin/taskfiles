@@ -1,0 +1,22 @@
+version: 3
+
+tasks:
+  updateconfig:
+    desc: Met à jour les fichiers de configuration Apache avec la variable d'environnement APACHE_DOCUMENT_ROOT.
+    vars:
+      APACHE_DOCUMENT_ROOT: '{{.APACHE_DOCUMENT_ROOT | default "/var/www/public"}}'
+      DEFAULT_FILE: '{{.DEFAULT_FILE | default "./conf/apache2/000-default.conf"}}'
+      APACHE_CONF_FILE: '{{.APACHE_CONF_FILE | default "./conf/apache2/apache2.conf"}}'
+    silent: true
+    cmds:
+    - sed -ri -e 's|\$\{APACHE_DOCUMENT_ROOT\}|{.APACHE_DOCUMENT_ROOT}|g' {{.DEFAULT_FILE}}
+    - sed -ri -e 's|#ServerName www.example.com|ServerName {{.SERVERNAME}}|g' {{.DEFAULT_FILE}}
+    - sed -ri -e 's|\$\{APACHE_DOCUMENT_ROOT\}|{.APACHE_DOCUMENT_ROOT}|g' {{.APACHE_CONF_FILE}}
+    - |
+      sed -i '/^# Global configuration/a\
+      #\
+      # ServerName: Set the servers fully qualified domain name globally\
+      # This suppresses the warning about not being able to reliably determine\
+      # the servers fully qualified domain name\
+      #\
+      ServerName {{.SERVERNAME}}' {{.APACHE_CONF_FILE}}
