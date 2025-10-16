@@ -18,7 +18,7 @@
     "lint:markdown": "markdownlint README.md"
   },
   "devDependencies": {
-    "markdownlint-cli": "^0.44.0",
+    "markdownlint-cli": "^0.45.0",
     "release-it": "^17.11.0",
     "yaml-lint": "^1.7.0"
   }
