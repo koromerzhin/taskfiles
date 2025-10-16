@@ -1,0 +1,26 @@
+version: '3'
+tasks:
+  yml:
+    desc: "Linter tous les fichiers YAML (.yml, .yaml)"
+    silent: true
+    cmds:
+    - |
+      set -e
+      find . -type f \( -name "*.yml" -o -name "*.yaml" \) \
+        ! -path "*/node_modules/*" ! -path "*/vendor/*" | while read -r file; do
+        echo "Vérification de $file"
+        npx yaml-lint "$file"
+      done
+      echo "✅ Tous les fichiers YAML ont été vérifiés"
+  md:
+    desc: "Linter tous les fichiers Markdown (.md)"
+    silent: true
+    cmds:
+    - |
+      set -e
+      find . -type f -name "*.md" \
+        ! -path "*/node_modules/*" ! -path "*/vendor/*" ! -name "CHANGELOG.md" | while read -r file; do
+        echo "Vérification de $file"
+        npx markdownlint "$file"
+      done
+      echo "✅ Tous les fichiers Markdown ont été vérifiés"

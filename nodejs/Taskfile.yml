@@ -2,7 +2,7 @@ version: 3
 # Taskfile pour les projets Node.js
 
 vars:
-  DEV_DEPS: "all-contributors-cli cypress generate-changelog gitmoji-changelog jscpd license-checker markdownlint-cli readme-md-generator semantic-git-commit-cli yaml"
+  DEV_DEPS: "yaml-lint markdownlint-cli"
 
 tasks:
   install:
