@@ -37,8 +37,8 @@ tasks:
     desc: "Vérifie le code avec tous les outils de linting"
     silent: true
     cmds:
-    - npm run lint:markdown
-    - find . -type f -name "*.yml" -exec npx yaml-lint {} +
+    - task: lint:yaml
+    - task: lint:md
 
   info:
     desc: "Affiche les informations du projet avec les variables d'environnement"
