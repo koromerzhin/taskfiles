@@ -3,24 +3,53 @@ tasks:
   yml:
     desc: "Linter tous les fichiers YAML (.yml, .yaml)"
     silent: true
+    vars:
+      IGNORE_DIR: '{{.IGNORE_DIR | default ""}}'
     cmds:
-    - |
-      set -e
-      find . -type f \( -name "*.yml" -o -name "*.yaml" \) \
-        ! -path "*/node_modules/*" ! -path "*/vendor/*" | while read -r file; do
-        echo "Vérification de $file"
-        npx yaml-lint "$file"
-      done
-      echo "✅ Tous les fichiers YAML ont été vérifiés"
+      - |
+        set -euo pipefail
+
+        IGNORE_DIR="{{.IGNORE_DIR | default ""}}"
+        DIRS="${IGNORE_DIR//,/ }"
+
+        FIND_EXPR=()
+        for d in $DIRS; do
+          [ -z "$d" ] && continue
+          FIND_EXPR+=( "(" -path "./$d" -prune ")" -o )
+        done
+
+        find . "${FIND_EXPR[@]}" -type f \( -name '*.yml' -o -name '*.yaml' \) \
+          ! -path '*/node_modules/*' ! -path '*/vendor/*' -print \
+          | while IFS= read -r file; do
+              echo "Vérification de $file"
+              npx yaml-lint "$file"
+            done
+
+        echo "✅ Tous les fichiers YAML ont été vérifiés"
+
   md:
     desc: "Linter tous les fichiers Markdown (.md)"
     silent: true
+    vars:
+      IGNORE_DIR: '{{.IGNORE_DIR | default ""}}'
     cmds:
-    - |
-      set -e
-      find . -type f -name "*.md" \
-        ! -path "*/node_modules/*" ! -path "*/vendor/*" ! -name "CHANGELOG.md" | while read -r file; do
-        echo "Vérification de $file"
-        npx markdownlint "$file"
-      done
-      echo "✅ Tous les fichiers Markdown ont été vérifiés"
+      - |
+        set -euo pipefail
+
+        IGNORE_DIR="{{.IGNORE_DIR | default ""}}"
+        DIRS="${IGNORE_DIR//,/ }"
+
+        FIND_EXPR=()
+        for d in $DIRS; do
+          [ -z "$d" ] && continue
+          FIND_EXPR+=( "(" -path "./$d" -prune ")" -o )
+        done
+
+        find . "${FIND_EXPR[@]}" -type f -name '*.md' \
+          ! -path '*/node_modules/*' ! -path '*/vendor/*' ! -name 'CHANGELOG.md' -print \
+          | while IFS= read -r file; do
+              echo "Vérification de $file"
+              npx markdownlint "$file"
+            done
+
+        echo "✅ Tous les fichiers Markdown ont été vérifiés"
