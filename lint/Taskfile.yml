@@ -1,5 +1,15 @@
 version: '3'
 tasks:
+  docker:
+    desc: "Tâches Docker liées au linting"
+    vars:
+      DOCKERCOMPOSEFILE: '{{.DOCKERCOMPOSEFILE | default "docker-compose.yml"}}'
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    cmds:
+    - docker compose -f {{.DOCKERCOMPOSEFILE}} config
+
   action:
     desc: "Linter tous les fichiers Action (.yml dans .github/workflows)"
     preconditions:
@@ -13,6 +23,7 @@ tasks:
       if ! command -v actionlint >/dev/null 2>&1; then
         echo "actionlint non trouvé, installation..."
         go install github.com/rhysd/actionlint/cmd/actionlint@latest
+        export PATH="$PATH:$(go env GOPATH)/bin"
       fi
 
       find .github/workflows -type f -name '*.yml' ! -path '*/node_modules/*' ! -path '*/vendor/*' -print | while IFS= read -r file; do
@@ -21,6 +32,7 @@ tasks:
       done
 
       echo "✅ Tous les fichiers Action ont été vérifiés"
+
   yml:
     desc: "Linter tous les fichiers YAML (.yml, .yaml)"
     silent: true
