@@ -15,11 +15,10 @@ tasks:
         go install github.com/rhysd/actionlint/cmd/actionlint@latest
       fi
 
-      find .github/workflows -type f -name '*.yml' ! -path '*/node_modules/*' ! -path '*/vendor/*' -print \
-        | while IFS= read -r file; do
-            echo "Vérification de $file"
-            actionlint  "$file"
-          done
+      find .github/workflows -type f -name '*.yml' ! -path '*/node_modules/*' ! -path '*/vendor/*' -print | while IFS= read -r file; do
+        echo "Vérification de $file"
+        actionlint  "$file"
+      done
 
       echo "✅ Tous les fichiers Action ont été vérifiés"
   yml:
@@ -40,12 +39,10 @@ tasks:
         FIND_EXPR+=( "(" -path "./$d" -prune ")" -o )
       done
 
-      find . "${FIND_EXPR[@]}" -type f \( -name '*.yml' -o -name '*.yaml' \) \
-        ! -path '*/node_modules/*' ! -path '*/vendor/*' -print \
-        | while IFS= read -r file; do
-            echo "Vérification de $file"
-            npx yaml-lint "$file"
-          done
+      find . "${FIND_EXPR[@]}" -type f \( -name '*.yml' -o -name '*.yaml' \) ! -path '*/node_modules/*' ! -path '*/vendor/*' -print | while IFS= read -r file; do
+        echo "Vérification de $file"
+        npx yaml-lint "$file"
+      done
 
       echo "✅ Tous les fichiers YAML ont été vérifiés"
 
@@ -67,11 +64,9 @@ tasks:
         FIND_EXPR+=( "(" -path "./$d" -prune ")" -o )
       done
 
-      find . "${FIND_EXPR[@]}" -type f -name '*.md' \
-        ! -path '*/node_modules/*' ! -path '*/vendor/*' ! -name 'CHANGELOG.md' -print \
-        | while IFS= read -r file; do
-            echo "Vérification de $file"
-            npx markdownlint "$file"
-          done
+      find . "${FIND_EXPR[@]}" -type f -name '*.md' ! -path '*/node_modules/*' ! -path '*/vendor/*' ! -name 'CHANGELOG.md' -print | while IFS= read -r file; do
+        echo "Vérification de $file"
+        npx markdownlint "$file"
+      done
 
       echo "✅ Tous les fichiers Markdown ont été vérifiés"
