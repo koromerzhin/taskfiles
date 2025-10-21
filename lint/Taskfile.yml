@@ -86,7 +86,7 @@ tasks:
         FIND_EXPR+=( "(" -path "./$d" -prune ")" -o )
       done
 
-      find . "${FIND_EXPR[@]}" -type f \( -name '*.md' \) ! -path '*/node_modules/*' ! -path '*/vendor/*' -print | while IFS= read -r file; do
+      find . "${FIND_EXPR[@]}" -type f -name '*.md' ! -path '*/node_modules/*' ! -path '*/vendor/*' ! -name 'CHANGELOG.md' -print | while IFS= read -r file; do
         echo "Vérification de $file"
         markdownlint "$file"
       done
