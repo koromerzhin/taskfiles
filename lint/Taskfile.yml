@@ -42,11 +42,6 @@ tasks:
     - |
       set -euo pipefail
 
-      if ! command -v yamllint >/dev/null 2>&1; then
-        echo "yaml-lint non trouvé, installation..."
-        npm install -g yaml-lint
-      fi
-
       IGNORE_DIR="{{.IGNORE_DIR | default ""}}"
       DIRS="${IGNORE_DIR//,/ }"
 
@@ -58,7 +53,7 @@ tasks:
 
       find . "${FIND_EXPR[@]}" -type f \( -name '*.yml' -o -name '*.yaml' \) ! -path '*/node_modules/*' ! -path '*/vendor/*' -print | while IFS= read -r file; do
         echo "Vérification de $file"
-        yamllint "$file"
+        npx yaml-lint "$file"
       done
 
       echo "✅ Tous les fichiers YAML ont été vérifiés"
@@ -72,11 +67,6 @@ tasks:
     - |
       set -euo pipefail
 
-      if ! command -v markdownlint >/dev/null 2>&1; then
-        echo "markdownlint-cli non trouvé, installation..."
-        npm install -g markdownlint-cli
-      fi
-
       IGNORE_DIR="{{.IGNORE_DIR | default ""}}"
       DIRS="${IGNORE_DIR//,/ }"
 
@@ -88,7 +78,7 @@ tasks:
 
       find . "${FIND_EXPR[@]}" -type f -name '*.md' ! -path '*/node_modules/*' ! -path '*/vendor/*' ! -name 'CHANGELOG.md' -print | while IFS= read -r file; do
         echo "Vérification de $file"
-        markdownlint "$file"
+        npx markdownlint "$file"
       done
 
       echo "✅ Tous les fichiers Markdown ont été vérifiés"
