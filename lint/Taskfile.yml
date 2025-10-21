@@ -78,7 +78,7 @@ tasks:
 
       find . "${FIND_EXPR[@]}" -type f -name '*.md' ! -path '*/node_modules/*' ! -path '*/vendor/*' ! -name 'CHANGELOG.md' -print | while IFS= read -r file; do
         echo "Vérification de $file"
-        npx markdownlint "$file"
+        npx markdownlint-cli "$file"
       done
 
       echo "✅ Tous les fichiers Markdown ont été vérifiés"
