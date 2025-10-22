@@ -38,6 +38,7 @@ tasks:
     silent: true
     cmds:
     - task: lint:yml
+    - task: lint:md
 
   info:
     desc: "Affiche les informations du projet avec les variables d'environnement"
