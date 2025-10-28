@@ -76,7 +76,7 @@ tasks:
       # Téléchargement individuel de chaque image
       grep -E "^\s*image:" "{{.COMPOSE_FILE}}" | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq | while read -r image; do
         if [ -n "$image" ] && [ "$image" != "null" ]; then
-          image=$(echo "$image" | xargs)
+          image=$(echo "$image" | tr -d '\r\n' | xargs)
           echo "DEBUG: image='$image'"
           if [[ "$image" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]]; then
             echo "⬇️  Téléchargement de $image..."
