@@ -63,11 +63,10 @@ tasks:
 
       echo "⬇️  Téléchargement des images depuis '{{.COMPOSE_FILE}}'..."
 
-      # Extraction et téléchargement individuel des images pour éviter les problèmes de dépendances
-      images=$(grep -E "^\s*image:" {{.COMPOSE_FILE}} | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq)
 
+      # Extraction et téléchargement individuel des images pour éviter les problèmes de dépendances
       echo "🔍 Images trouvées à télécharger:"
-      echo "$images" | while read -r image; do
+      grep -E "^\s*image:" "{{.COMPOSE_FILE}}" | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq | while read -r image; do
         if [ -n "$image" ] && [ "$image" != "null" ]; then
           echo "  🐳 $image"
         fi
@@ -75,10 +74,15 @@ tasks:
       echo ""
 
       # Téléchargement individuel de chaque image
-      echo "$images" | while read -r image; do
+      grep -E "^\s*image:" "{{.COMPOSE_FILE}}" | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq | while read -r image; do
         if [ -n "$image" ] && [ "$image" != "null" ]; then
-          echo "⬇️  Téléchargement de $image..."
-          docker pull "$image" || echo "⚠️  Échec du téléchargement de $image"
+          image=$(echo "$image" | tr -d '\r\n' | xargs)
+          if [[ "$image" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]]; then
+            echo "⬇️  Téléchargement de $image..."
+            docker pull "$image" || echo "⚠️  Échec du téléchargement de $image"
+          else
+            echo "⚠️  Format d'image invalide: '$image'"
+          fi
         fi
       done
 
