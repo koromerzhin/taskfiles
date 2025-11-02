@@ -8,7 +8,7 @@ tasks:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
     cmds:
-    - docker compose -f {{.DOCKERCOMPOSEFILE}} config 1>/dev/null
+    - docker compose -f {{.DOCKERCOMPOSEFILE}} config
 
   action:
     desc: "Linter tous les fichiers Action (.yml dans .github/workflows)"
