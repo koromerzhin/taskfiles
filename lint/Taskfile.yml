@@ -4,11 +4,12 @@ tasks:
     desc: "Tâches Docker liées au linting"
     vars:
       DOCKERCOMPOSEFILE: '{{.DOCKERCOMPOSEFILE | default "docker-compose.yml"}}'
+    interactive: false
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
     cmds:
-    - docker compose -f {{.DOCKERCOMPOSEFILE}} config
+    - docker compose -f {{.DOCKERCOMPOSEFILE}} config </dev/null
 
   action:
     desc: "Linter tous les fichiers Action (.yml dans .github/workflows)"
