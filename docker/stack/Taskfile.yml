@@ -472,9 +472,14 @@ tasks:
       if [ "${DOCKER_INTERACTIVE:-true}" = "false" ] || [ "${CI:-false}" = "true" ] || [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
         # En CI/CD, ne pas utiliser le mode interactif
         docker_options=""
+      elif [ ! -t 0 ] || [ ! -t 1 ]; then
+        # Sans terminal réel (ex: npm/release-it), éviter -it
+        docker_options=""
       elif [ "{{.INTERACTIVE}}" = "true" ]; then
         docker_options="-it"
-      fi      # Exécuter la commande
+      fi
+
+      # Exécuter la commande
       docker exec $docker_options $container_id {{.COMMAND}}
 
   shell:
@@ -600,10 +605,16 @@ tasks:
         # En CI/CD, ne pas utiliser le mode interactif
         docker_options=""
         echo "⚠️  Mode non-interactif détecté (CI/CD)"
+      elif [ ! -t 0 ] || [ ! -t 1 ]; then
+        # Sans terminal réel (ex: lancement via script), éviter -it
+        docker_options=""
+        echo "⚠️  Aucun TTY détecté, bascule en mode non-interactif"
       else
         # En environnement normal, utiliser le mode interactif pour shell
         docker_options="-it"
-      fi      # Ajouter l'utilisateur si spécifié
+      fi
+
+      # Ajouter l'utilisateur si spécifié
       if [ -n "{{.EXEC_USER}}" ]; then
         docker_options="$docker_options --user {{.EXEC_USER}}"
         echo "👤 Utilisateur : {{.EXEC_USER}}"
