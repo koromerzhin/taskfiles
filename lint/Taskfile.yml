@@ -22,7 +22,7 @@ tasks:
 
       if ! command -v actionlint >/dev/null 2>&1; then
         echo "actionlint non trouvé, installation..."
-        go install github.com/rhysd/actionlint/cmd/actionlint@latest
+        go install actionlint.kjanat.dev/cmd/actionlint@latest
         export PATH="$PATH:$(go env GOPATH)/bin"
       fi
 
