@@ -1,5 +1,0 @@
-version: '3'
-
-includes:
-  php:
-    taskfile: ./php/Taskfile.yml
