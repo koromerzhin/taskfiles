@@ -16,13 +16,15 @@ tasks:
     - sh: command -v go
       msg: "go n'est pas installé. Veuillez l'installer"
     silent: true
+    vars:
+      ACTIONLINT_VERSION: '{{.ACTIONLINT_VERSION | default "v1.7.12"}}'
     cmds:
     - |
       set -euo pipefail
 
       if ! command -v actionlint >/dev/null 2>&1; then
-        echo "actionlint non trouvé, installation..."
-        go install actionlint.kjanat.dev/cmd/actionlint@latest
+        echo "actionlint non trouvé, installation {{.ACTIONLINT_VERSION}}..."
+        go install github.com/rhysd/actionlint/cmd/actionlint@{{.ACTIONLINT_VERSION}}
         export PATH="$PATH:$(go env GOPATH)/bin"
       fi
 
