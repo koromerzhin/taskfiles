@@ -22,7 +22,7 @@
 
 ## 2. Architecture
 
-```
+```text
 Taskfile.yml                    # racine : dotenv [.env], 8 includes, vars PROJECT_NAME/ENVIRONMENT/TIMESTAMP
 ├── docker/Taskfile.yml         # create/getfile + 8 sous-namespaces
 │   ├── stack/ (772 l.)         # deploy/update/rollback/exec… Swarm
@@ -57,7 +57,7 @@ Taskfile.yml                    # racine : dotenv [.env], 8 includes, vars PROJE
 ## 3. Points positifs
 
 | # | Point | Preuve |
-|---|-------|--------|
+| --- | ------- | -------- |
 | 1 | **Modularité** : 23 Taskfiles en namespaces imbriqués, réutilisables par `includes:` | `Taskfile.yml:7-15`, `docker/Taskfile.yml:3-11` |
 | 2 | **Documentation intégrée** : `desc` + `summary` + exemples sur (presque) chaque tâche | `utils/backup/Taskfile.yml:5-19`, `docker/images/Taskfile.yml:10-19` |
 | 3 | **Garde-fous** : `preconditions` docker/npm/fichiers, confirmations avant `restore`/`delete`/`clean` PHP | `utils/file/Taskfile.yml:27-33`, `utils/file/Taskfile.yml:296-311` |
@@ -129,7 +129,7 @@ Taskfile.yml                    # racine : dotenv [.env], 8 includes, vars PROJE
 ## 5. Manques
 
 | Manque | Gravité | Détail |
-|--------|---------|--------|
+| -------- | --------- | -------- |
 | `.gitignore` couvrant backups/archives/outils | **bloquant** | P0-1 : risque de committer des secrets |
 | Vérification d'intégrité des `.phar` (SHA256) | **bloquant** | P0-2 : chaîne d'approvisionnement |
 | Tests (`bats`) + `shellcheck` en CI | **important** | P2-1 : bash complexe non vérifié |
@@ -144,7 +144,7 @@ Taskfile.yml                    # racine : dotenv [.env], 8 includes, vars PROJE
 ## 6. Mises à jour proposées
 
 | Priorité | Action | Fichiers concernés | Effort | Dépend de |
-|----------|--------|--------------------|--------|-----------|
+| ---------- | -------- | -------------------- | -------- | ----------- |
 | P0 | Étendre `.gitignore` (`.env.backup.*`, `backups/`, `*.tar.gz`, `tools/`, `docker-images.txt`) | `.gitignore` | S | — |
 | P0 | `curl -fsSL` + SHA256 épinglés et vérifiés avant `chmod +x` | `download/php/Taskfile.yml` | M | — |
 | P0 | `env:validate` sans `source`/`eval` (parse passif) | `env/Taskfile.yml` | S | — |
@@ -171,7 +171,8 @@ Taskfile.yml                    # racine : dotenv [.env], 8 includes, vars PROJE
 
 ## 7. Plan d'action
 
-**Lot 1 — Secrets et sécurité (P0), ~1 h**
+### Lot 1 — Secrets et sécurité (P0), ~1 h
+
 1. Étendre `.gitignore` puis vérifier : `git status --porcelain --ignored | grep -E 'backups|tools|tar.gz|backup'` ne doit rien lister de suivi.
 2. `download/php` : `curl -fsSL`, SHA256 en vars, `sha256sum -c` avant `chmod +x`.
 3. `env:validate` : remplacer `source`+`eval` par `grep -E '^[A-Z_]+='`.
@@ -179,19 +180,22 @@ Taskfile.yml                    # racine : dotenv [.env], 8 includes, vars PROJE
 5. `docker:getfile` : défaut `DEST_PATH` hors `.env`, refus d'écrasement sans `FORCE=true`.
 *Vérification* : `git status --porcelain` propre ; `task env:validate` OK sur `.env.example` ; rejouer chaque tâche 2 fois sans dérive.
 
-**Lot 2 — Dette fonctionnelle (P1 shell), ~2 h**
+### Lot 2 — Dette fonctionnelle (P1 shell), ~2 h
+
 1. Compteurs subshell (`clean`, `backup:clean`) → process substitution ; tester avec de vrais vieux logs.
 2. README/help : liens morts supprimés, 8 namespaces documentés, aide Python retirée ou namespace créé.
 3. `package.json` (licence MIT, author, `private`), Renovate `.nvmrc`, `auto-changelog` déclaré, `add-dev-deps` épinglé, `info`/`validate`/`lint:all` exhaustifs, défauts docker neutres.
 *Vérification* : `task --list-all` cohérent avec le README ; `npx release-it --dry-run` sans erreur de hook.
 
-**Lot 3 — CI et reproductibilité (P1 CI), ~2 h**
+### Lot 3 — CI et reproductibilité (P1 CI), ~2 h
+
 1. `npm ci`, suppression du cache redondant, pins SHA des actions, `lint:all` incluant `action`+`docker`.
 2. `.nvmrc` exact, devDeps exactes (`npm install --save-exact`), configs `markdownlint`/`yamllint` commitées.
 3. Dependabot réduit à `npm` (ou manifestes ajoutés).
 *Vérification* : workflow vert sur branche de test ; `npm ci --dry-run` reproductible ; `task lint:all` couvre `.github/` et le compose.
 
-**Lot 4 — Qualité durable (P2), ~0,5–1 j**
+### Lot 4 — Qualité durable (P2), ~0,5–1 j
+
 1. `bats` : 3 tests min (`env:validate`, `backup:create/restore`, `clean:logs` avec bug P1-1 en non-régression) + `shellcheck` en CI.
 2. `yq`-first, `system:network` non bloquant, fallbacks portabilité, `baseBranches: [main/develop]` dans `.whitesource`, badges + CONTRIBUTING + schéma Taskfile.
 *Vérification* : `task test` vert en local et en CI ; README affichant statuts.

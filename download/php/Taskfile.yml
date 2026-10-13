@@ -247,6 +247,7 @@ tasks:
       ⚠️  ATTENTION: Cette action est irréversible !
     vars:
       TOOLS_DIR: '{{.TOOLS_DIR | default "./tools/php"}}'
+      FORCE: '{{.FORCE | default "false"}}'
     cmds:
     - |
       # Naviguer vers la racine du projet (parent du dossier download)
@@ -268,11 +269,20 @@ tasks:
       fi
 
       echo "🗑️  Suppression du dossier '$tools_dir' et de tous les outils..."
-      read -p "Êtes-vous sûr ? [y/N] " -n 1 -r
-      echo
-      if [[ $REPLY =~ ^[Yy]$ ]]; then
+      # Confirmation (sauf FORCE=true ; échec rapide en non-interactif au lieu de hang)
+      if [ "{{.FORCE}}" = "true" ]; then
         rm -rf "$tools_dir"
-        echo "✅ Dossier supprimé"
+        echo "✅ Dossier supprimé (FORCE=true)"
+      elif [ ! -t 0 ]; then
+        echo "❌ Entrée non-interactive détectée : relancez avec FORCE=true pour confirmer (ou en interactif)"
+        exit 1
       else
-        echo "❌ Suppression annulée"
+        read -p "Êtes-vous sûr ? [y/N] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+          rm -rf "$tools_dir"
+          echo "✅ Dossier supprimé"
+        else
+          echo "❌ Suppression annulée"
+        fi
       fi

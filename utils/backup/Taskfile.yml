@@ -99,6 +99,7 @@ tasks:
     vars:
       RESTORE_DIR: '{{.RESTORE_DIR | default "./"}}'
       BACKUP_FILE: '{{.BACKUP_FILE | default ""}}'
+      FORCE: '{{.FORCE | default "false"}}'
     cmds:
     - |
       if [ -z "{{.BACKUP_FILE}}" ]; then
@@ -116,12 +117,19 @@ tasks:
       echo "📤 Restauration de la sauvegarde '{{.BACKUP_FILE}}'..."
       echo "📁 Vers: {{.RESTORE_DIR}}"
 
-      # Demande de confirmation
-      read -p "Confirmer la restauration ? [y/N] " -n 1 -r
-      echo
-      if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "❌ Restauration annulée"
+      # Demande de confirmation (sauf FORCE=true ; échec rapide en non-interactif au lieu de hang)
+      if [ "{{.FORCE}}" = "true" ]; then
+        echo "⚠️  FORCE=true : restauration sans confirmation"
+      elif [ ! -t 0 ]; then
+        echo "❌ Entrée non-interactive détectée : relancez avec FORCE=true pour confirmer (ou en interactif)"
         exit 1
+      else
+        read -p "Confirmer la restauration ? [y/N] " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+          echo "❌ Restauration annulée"
+          exit 1
+        fi
       fi
 
       # Extraction
