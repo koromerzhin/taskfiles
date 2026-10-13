@@ -30,8 +30,15 @@ tasks:
       echo "📋 Images extraites de '{{.COMPOSE_FILE}}' :"
       echo ""
 
-      # Extraction des images avec yq si disponible, sinon avec grep/sed
-      grep -E "^\s*image:" {{.COMPOSE_FILE}} | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq | while read -r image; do
+      # Extraction des images avec yq si disponible (robuste aux ancres YAML/multiligne), sinon avec grep/sed
+      if command -v yq >/dev/null 2>&1; then
+        images=$(yq eval '.services.*.image' {{.COMPOSE_FILE}} 2>/dev/null | grep -v "null" | sort | uniq)
+      else
+        # Fallback sans yq : fragile sur ancres YAML/multiligne
+        images=$(grep -E "^\s*image:" {{.COMPOSE_FILE}} | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq)
+      fi
+
+      printf '%s\n' "$images" | while read -r image; do
         if [ -n "$image" ]; then
           echo "  🐳 $image"
         fi
@@ -64,9 +71,17 @@ tasks:
       echo "⬇️  Téléchargement des images depuis '{{.COMPOSE_FILE}}'..."
 
 
+      # Extraction yq-first (robuste aux ancres YAML/multiligne), fallback grep documenté
+      if command -v yq >/dev/null 2>&1; then
+        images=$(yq eval '.services.*.image' "{{.COMPOSE_FILE}}" 2>/dev/null | grep -v "null" | sort | uniq)
+      else
+        # Fallback sans yq : fragile sur ancres YAML/multiligne
+        images=$(grep -E "^\s*image:" "{{.COMPOSE_FILE}}" | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq)
+      fi
+
       # Extraction et téléchargement individuel des images pour éviter les problèmes de dépendances
       echo "🔍 Images trouvées à télécharger:"
-      grep -E "^\s*image:" "{{.COMPOSE_FILE}}" | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq | while read -r image; do
+      printf '%s\n' "$images" | while read -r image; do
         if [ -n "$image" ] && [ "$image" != "null" ]; then
           echo "  🐳 $image"
         fi
@@ -74,7 +89,7 @@ tasks:
       echo ""
 
       # Téléchargement individuel de chaque image
-      grep -E "^\s*image:" "{{.COMPOSE_FILE}}" | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq | while read -r image; do
+      printf '%s\n' "$images" | while read -r image; do
         if [ -n "$image" ] && [ "$image" != "null" ]; then
           image=$(echo "$image" | tr -d '\r\n' | xargs)
           if [[ "$image" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]]; then
@@ -146,7 +161,13 @@ tasks:
       echo "🔍 Vérification de la disponibilité des images..."
       echo ""
 
-      images=$(grep -E "^\s*image:" {{.COMPOSE_FILE}} | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq)
+      # Extraction yq-first (robuste aux ancres YAML/multiligne), fallback grep documenté
+      if command -v yq >/dev/null 2>&1; then
+        images=$(yq eval '.services.*.image' {{.COMPOSE_FILE}} 2>/dev/null | grep -v "null" | sort | uniq)
+      else
+        # Fallback sans yq : fragile sur ancres YAML/multiligne
+        images=$(grep -E "^\s*image:" {{.COMPOSE_FILE}} | sed 's/.*image:\s*//' | sed 's/["'\'']*//g' | sort | uniq)
+      fi
 
       while IFS= read -r image; do
         if [ -n "$image" ] && [ "$image" != "null" ]; then

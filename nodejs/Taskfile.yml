@@ -2,7 +2,7 @@ version: 3
 # Taskfile pour les projets Node.js
 
 vars:
-  DEV_DEPS: "yaml-lint markdownlint-cli"
+  DEV_DEPS: '{{.DEV_DEPS | default "all-contributors-cli cypress generate-changelog gitmoji-changelog jscpd license-checker markdownlint-cli npm-run-all readme-md-generator semantic-git-commit-cli yaml"}}'
 
 tasks:
   install:
@@ -33,29 +33,35 @@ tasks:
     cmds:
     - |
       echo "📦 Installation des devDependencies communes..."
+      echo "📋 Liste: {{.DEV_DEPS}} (surchargeable via DEV_DEPS=\"...\")"
       echo ""
 
-      # Liste directe des packages
-      packages="all-contributors-cli cypress generate-changelog gitmoji-changelog jscpd license-checker markdownlint-cli npm-run-all readme-md-generator semantic-git-commit-cli yaml"
+      # Liste des packages (var DEV_DEPS, même défaut qu'avant : comportement inchangé sans surcharge)
+      packages="{{.DEV_DEPS}}"
 
-      # Installation des packages
+      # Collecte des manquants puis installation en une seule passe (déterministe, rapide)
+      missing=""
       added=0
       skipped=0
 
       for package_name in $packages; do
         # Vérifie si le package est déjà dans devDependencies
         if ! npm pkg get devDependencies | grep -q "\"$package_name\""; then
-          echo "📦 Installation de $package_name..."
-          if npm install --save-dev "$package_name"; then
-            added=$((added + 1))
-          else
-            echo "❌ Erreur lors de l'installation de $package_name"
-          fi
+          missing="$missing $package_name"
         else
           echo "⏭️  $package_name est déjà installé, ignoré."
           skipped=$((skipped + 1))
         fi
       done
+
+      if [ -n "$missing" ]; then
+        echo "📦 Installation de:$missing"
+        if npm install --save-dev $missing; then
+          added=$(echo "$missing" | wc -w)
+        else
+          echo "❌ Erreur lors de l'installation de:$missing"
+        fi
+      fi
 
       echo ""
       echo "📊 Résumé :"

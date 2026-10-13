@@ -11,7 +11,7 @@
     "publish": false
   },
   "hooks": {
-    "before:init": ["git pull", "task lint:all"],
+    "before:init": ["git fetch --dry-run", "task lint:all"],
     "after:bump": "npx auto-changelog -p"
   }
 }
