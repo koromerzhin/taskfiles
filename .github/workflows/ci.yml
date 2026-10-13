@@ -56,6 +56,12 @@ jobs:
       - name: lint all
         run: task lint:all
 
+      # Garde-fou : la section manuelle de CHANGELOG.md (highlights v2.0.0,
+      # marquée « Section manuelle ») est écrasable par `auto-changelog` à
+      # chaque release — ce contrôle échoue si elle disparaît.
+      - name: Check manual changelog section
+        run: grep -q 'Section manuelle' CHANGELOG.md
+
       # Le `.env` ne sert qu'aux tâches (dotenv racine) : nettoyé en fin de
       # job pour ne pas laisser de pattern polluant (anodin sur runner
       # éphémère, utile si copié dans un projet réel).
