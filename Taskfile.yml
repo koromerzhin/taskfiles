@@ -49,7 +49,8 @@ tasks:
       msg: "jq n'est pas installé (requis par 'task info' pour lire package.json)"
     cmds:
     - |
-      export PROJECT_VERSION=$(jq -r .version package.json)
+      PROJECT_VERSION=$(jq -r .version package.json)
+      export PROJECT_VERSION
       echo "🛠️  {{.PROJECT_NAME}} v$PROJECT_VERSION - Collection de Taskfiles"
       echo "📅 {{.TIMESTAMP}}"
       echo "🌍 Environnement: {{.ENVIRONMENT}}"

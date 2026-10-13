@@ -43,3 +43,24 @@ jobs:
       
       - name: lint all
         run: task lint:all
+
+  shellcheck:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Setup Task
+        uses: go-task/setup-task@v2
+
+      - name: Setup Python YAML lib
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq python3-yaml
+
+      # task lint:shell auto-installe shellcheck épinglé (v0.11.0) si absent,
+      # extrait les cmds: des Taskfiles (templates masqués) et échoue sur
+      # tout avertissement réel. Bloquant dès le jour 1 (état vert vérifié).
+      - name: shellcheck embedded scripts
+        run: task lint:shell
