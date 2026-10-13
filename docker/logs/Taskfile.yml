@@ -26,7 +26,7 @@ tasks:
       if [ -z "{{.CONTAINER_NAME}}" ]; then
         echo "❌ CONTAINER_NAME est requis"
         echo "📋 Conteneurs disponibles :"
-        docker ps --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
+        docker ps --format "table {{`{{.Names}}`}}\t{{`{{.Image}}`}}\t{{`{{.Status}}`}}"
         exit 1
       fi
 
@@ -59,7 +59,7 @@ tasks:
       if [ -z "{{.CONTAINER_NAME}}" ]; then
         echo "❌ CONTAINER_NAME est requis"
         echo "📋 Conteneurs disponibles :"
-        docker ps --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
+        docker ps --format "table {{`{{.Names}}`}}\t{{`{{.Image}}`}}\t{{`{{.Status}}`}}"
         exit 1
       fi
 
@@ -96,7 +96,7 @@ tasks:
       if [ -z "{{.SERVICE_NAME}}" ]; then
         echo "❌ SERVICE_NAME est requis"
         echo "📋 Services disponibles :"
-        docker service ls --format "table {{{{.Name}}}}\t{{{{.Mode}}}}\t{{{{.Replicas}}}}"
+        docker service ls --format "table {{`{{.Name}}`}}\t{{`{{.Mode}}`}}\t{{`{{.Replicas}}`}}"
         exit 1
       fi
 
@@ -124,7 +124,7 @@ tasks:
       echo "📄 Aperçu des logs de tous les conteneurs actifs :"
       echo ""
 
-      containers=$(docker ps --format "{{{{.Names}}}}")
+      containers=$(docker ps --format "{{`{{.Names}}`}}")
 
       if [ -z "$containers" ]; then
         echo "❌ Aucun conteneur actif trouvé"

@@ -28,6 +28,7 @@ except ImportError:
 def mask(text: str) -> str:
     # Idiome docker imbriqué "{{`...`}}" d'abord (sinon le regex simple
     # laisse des backticks orphelins qui cassent le parse shellcheck).
+    # Remplacement nu (sans quotes) : les quotes d'origine restent en place.
     text = re.sub(r"\{\{`.*?`\}\}", "DOCKERFMT", text)
     # Templates Task classiques.
     return re.sub(r"\{\{.*?\}\}", "TASKVAR", text)

@@ -264,7 +264,8 @@ tasks:
       - SOURCE_FILE: Chemin du fichier à supprimer
 
       Variables optionnelles:
-      - FORCE: Force la suppression sans confirmation (défaut: false)
+      - FORCE: Force la suppression sans confirmation (défaut: false, requis en non-interactif)
+      - Annulation ou entrée non-interactive sans FORCE → exit 1
 
       Exemples:
       task utils:file:delete SOURCE_FILE=./temp.txt
@@ -294,7 +295,13 @@ tasks:
       fi
 
       # Demande de confirmation si FORCE n'est pas activé
-      if [ "$force" != "true" ]; then
+      # (échec rapide en non-interactif au lieu de hang ; annulation = exit 1)
+      if [ "$force" = "true" ]; then
+        echo "⚠️  Suppression forcée (sans confirmation)"
+      elif [ ! -t 0 ]; then
+        echo "❌ Entrée non-interactive détectée : relancez avec FORCE=true pour confirmer (ou en interactif)"
+        exit 1
+      else
         printf "❓ Êtes-vous sûr de vouloir supprimer ce fichier ? [y/N] "
         read -r response
         case "$response" in
@@ -303,11 +310,9 @@ tasks:
             ;;
           *)
             echo "❌ Suppression annulée"
-            exit 0
+            exit 1
             ;;
         esac
-      else
-        echo "⚠️  Suppression forcée (sans confirmation)"
       fi
 
       # Effectue la suppression

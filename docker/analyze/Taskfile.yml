@@ -24,24 +24,25 @@ tasks:
       if [ -z "{{.CONTAINER_NAME}}" ]; then
         echo "❌ CONTAINER_NAME est requis"
         echo "📋 Conteneurs disponibles :"
-        docker ps -a --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
+        docker ps -a --format "table {{`{{.Names}}`}}\t{{`{{.Image}}`}}\t{{`{{.Status}}`}}"
         exit 1
       fi
 
       echo "🔬 Analyse du cycle de vie du conteneur '{{.CONTAINER_NAME}}' :"
       echo ""
 
-      # Informations de base
-      task: info:container:inspect CONTAINER_NAME={{.CONTAINER_NAME}}
+      # Informations de base (appel direct : aucune référence inter-namespaces
+      # possible depuis ce scope — `task:` n'existe qu'en clé YAML, pas en shell)
+      docker inspect {{.CONTAINER_NAME}} --format "{{`{{.Name}}`}} ({{`{{.Config.Image}}`}}) - {{`{{.State.Status}}`}}"
 
       echo ""
       echo "📊 Historique des événements (si disponible) :"
       echo "   Note: Les événements Docker sont conservés temporairement"
 
       # Tentative de récupération des événements récents
-      container_id=$(docker inspect {{.CONTAINER_NAME}} --format "{{{{.Id}}}}" 2>/dev/null || echo "")
+      container_id=$(docker inspect {{.CONTAINER_NAME}} --format "{{`{{.Id}}`}}" 2>/dev/null || echo "")
       if [ -n "$container_id" ]; then
-        docker events --since 24h --filter container=$container_id --format "{{{{.Time}}}} - {{{{.Action}}}}" 2>/dev/null || echo "   Aucun événement récent trouvé"
+        docker events --since 24h --filter container=$container_id --format "{{`{{.Time}}`}} - {{`{{.Action}}`}}" 2>/dev/null || echo "   Aucun événement récent trouvé"
       fi
 
   container:performance:
@@ -67,7 +68,7 @@ tasks:
       if [ -z "{{.CONTAINER_NAME}}" ]; then
         echo "❌ CONTAINER_NAME est requis"
         echo "📋 Conteneurs disponibles :"
-        docker ps --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
+        docker ps --format "table {{`{{.Names}}`}}\t{{`{{.Image}}`}}\t{{`{{.Status}}`}}"
         exit 1
       fi
 
@@ -114,7 +115,7 @@ tasks:
         filter_opts="$filter_opts --filter status={{.STATUS}}"
       fi
 
-      docker ps -a $filter_opts --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}\t{{{{.CreatedAt}}}}"
+      docker ps -a $filter_opts --format "table {{`{{.Names}}`}}\t{{`{{.Image}}`}}\t{{`{{.Status}}`}}\t{{`{{.CreatedAt}}`}}"
 
   system:overview:
     desc: "Analyse globale du système Docker"
@@ -137,11 +138,11 @@ tasks:
 
       echo ""
       echo "🏃‍♂️ Conteneurs actifs :"
-      docker ps --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}\t{{{{.Ports}}}}"
+      docker ps --format "table {{`{{.Names}}`}}\t{{`{{.Image}}`}}\t{{`{{.Status}}`}}\t{{`{{.Ports}}`}}"
 
       echo ""
       echo "💾 Images locales :"
-      docker images --format "table {{{{.Repository}}}}\t{{{{.Tag}}}}\t{{{{.Size}}}}\t{{{{.CreatedAt}}}}"
+      docker images --format "table {{`{{.Repository}}`}}\t{{`{{.Tag}}`}}\t{{`{{.Size}}`}}\t{{`{{.CreatedAt}}`}}"
 
       echo ""
       echo "🔗 Réseaux :"
@@ -176,7 +177,7 @@ tasks:
       if [ -z "{{.IMAGE_NAME}}" ]; then
         echo "❌ IMAGE_NAME est requis"
         echo "📋 Images disponibles :"
-        docker images --format "table {{{{.Repository}}}}\t{{{{.Tag}}}}\t{{{{.Size}}}}"
+        docker images --format "table {{`{{.Repository}}`}}\t{{`{{.Tag}}`}}\t{{`{{.Size}}`}}"
         exit 1
       fi
 
@@ -184,7 +185,7 @@ tasks:
       echo ""
 
       echo "📋 Informations de base :"
-      docker inspect {{.IMAGE_NAME}} --format "{{{{json .}}}" | jq -r '
+      docker inspect {{.IMAGE_NAME}} --format "{{`json .`}}" | jq -r '
         "ID: " + .Id,
         "Taille: " + (.Size | tostring) + " bytes",
         "Architecture: " + .Architecture,

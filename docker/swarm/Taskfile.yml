@@ -15,31 +15,30 @@ tasks:
     - |
       echo "🐳 Initialisation de Docker Swarm..."
 
-      # Construction de la commande avec options conditionnelles
-      SWARM_CMD="docker swarm init"
+      # Construction par liste d'args (pas d'eval : chaque valeur reste un
+      # argument unique, même avec espaces ou métacaractères)
+      set -- docker swarm init
 
       # Ajouter default-addr-pool
       if [ -n "{{.SWARM_DEFAULT_ADDR_POOL}}" ]; then
-        SWARM_CMD="$SWARM_CMD --default-addr-pool {{.SWARM_DEFAULT_ADDR_POOL}}"
+        set -- "$@" --default-addr-pool "{{.SWARM_DEFAULT_ADDR_POOL}}"
         echo "📋 Pool d'adresses par défaut: {{.SWARM_DEFAULT_ADDR_POOL}}"
       fi
 
       # Ajouter advertise-addr si spécifié
       if [ -n "{{.SWARM_ADVERTISE_ADDR}}" ]; then
-        SWARM_CMD="$SWARM_CMD --advertise-addr {{.SWARM_ADVERTISE_ADDR}}"
+        set -- "$@" --advertise-addr "{{.SWARM_ADVERTISE_ADDR}}"
         echo "📡 Adresse d'annonce: {{.SWARM_ADVERTISE_ADDR}}"
       fi
 
       # Ajouter listen-addr si spécifié
       if [ -n "{{.SWARM_LISTEN_ADDR}}" ]; then
-        SWARM_CMD="$SWARM_CMD --listen-addr {{.SWARM_LISTEN_ADDR}}"
+        set -- "$@" --listen-addr "{{.SWARM_LISTEN_ADDR}}"
         echo "👂 Adresse d'écoute: {{.SWARM_LISTEN_ADDR}}"
       fi
 
-      echo "🚀 Exécution: $SWARM_CMD"
-      eval $SWARM_CMD
-
-      if [ $? -eq 0 ]; then
+      echo "🚀 Exécution: $*"
+      if "$@"; then
         echo "✅ Docker Swarm initialisé avec succès!"
         echo "📋 Pour voir les informations du cluster:"
         echo "   docker info"
@@ -48,6 +47,7 @@ tasks:
         echo "   docker swarm join-token manager"
       else
         echo "❌ Échec de l'initialisation de Docker Swarm"
+        exit 1
       fi
 
   init-simple:
@@ -60,7 +60,14 @@ tasks:
       SWARM_DEFAULT_ADDR_POOL: '{{.SWARM_DEFAULT_ADDR_POOL | default "10.20.0.0/16"}}'
       SWARM_ADVERTISE_ADDR: '{{.SWARM_ADVERTISE_ADDR | default ""}}'
     cmds:
-    - docker swarm init --default-addr-pool {{.SWARM_DEFAULT_ADDR_POOL}} --advertise-addr {{.SWARM_ADVERTISE_ADDR}}
+    - |
+      # --advertise-addr omis quand vide (docker refuse un flag vide) ; pas
+      # d'eval, chaque valeur reste un argument unique
+      set -- docker swarm init --default-addr-pool {{.SWARM_DEFAULT_ADDR_POOL}}
+      if [ -n "{{.SWARM_ADVERTISE_ADDR}}" ]; then
+        set -- "$@" --advertise-addr "{{.SWARM_ADVERTISE_ADDR}}"
+      fi
+      "$@"
 
   status:
     desc: "Affiche le statut du cluster Docker Swarm"
@@ -70,7 +77,7 @@ tasks:
       msg: "Docker n'est pas installé ou accessible"
     cmds:
     - |
-      if docker info --format '{{.Swarm.LocalNodeState}}' | grep -q active; then
+      if docker info --format '{{`{{.Swarm.LocalNodeState}}`}}' | grep -qx active; then
         echo "✅ Docker Swarm est actif"
         echo ""
         echo "📋 Informations du cluster:"
@@ -105,7 +112,7 @@ tasks:
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
-    - sh: docker info --format '{{.Swarm.LocalNodeState}}' | grep -q active
+    - sh: docker info --format '{{`{{.Swarm.LocalNodeState}}`}}' | grep -qx active
       msg: "Docker Swarm n'est pas initialisé sur ce nœud"
     cmds:
     - echo "🔑 Token pour ajouter un Worker:"

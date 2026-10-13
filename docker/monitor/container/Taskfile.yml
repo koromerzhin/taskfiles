@@ -27,9 +27,9 @@ tasks:
 
       if [ -n "{{.IMAGE_NAME}}" ]; then
         echo "🎯 Filtrage pour l'image: {{.IMAGE_NAME}}"
-        docker events --filter container --filter event=start --filter image={{.IMAGE_NAME}} --format "{.TimeNano} - 🚀 Container {.Actor.Attributes.name} ({.Actor.Attributes.image}) started"
+        docker events --filter container --filter event=start --filter image={{.IMAGE_NAME}} --format "{{`{{.TimeNano}}`}} - 🚀 Container {{`{{.Actor.Attributes.name}}`}} ({{`{{.Actor.Attributes.image}}`}}) started"
       else
-        docker events --filter container --filter event=start --format "{.TimeNano} - 🚀 Container {.Actor.Attributes.name} ({.Actor.Attributes.image}) started"
+        docker events --filter container --filter event=start --format "{{`{{.TimeNano}}`}} - 🚀 Container {{`{{.Actor.Attributes.name}}`}} ({{`{{.Actor.Attributes.image}}`}}) started"
       fi
 
   status:
@@ -53,7 +53,7 @@ tasks:
       if [ -z "{{.CONTAINER_NAME}}" ]; then
         echo "❌ CONTAINER_NAME est requis"
         echo "📋 Conteneurs disponibles :"
-        docker ps -a --format "table {.Names}\t{.Image}\t{.Status}"
+        docker ps -a --format "table {{`{{.Names}}`}}\t{{`{{.Image}}`}}\t{{`{{.Status}}`}}"
         exit 1
       fi
 
@@ -61,18 +61,18 @@ tasks:
       echo ""
 
       # Vérifier si le conteneur existe
-      if ! docker ps -a --filter "name={{.CONTAINER_NAME}}" --format "{.Names}" | grep -q "^{{.CONTAINER_NAME}}$"; then
+      if ! docker ps -a --filter "name={{.CONTAINER_NAME}}" --format "{{`{{.Names}}`}}" | grep -q "^{{.CONTAINER_NAME}}$"; then
         echo "❌ Le conteneur '{{.CONTAINER_NAME}}' n'existe pas"
         exit 1
       fi
 
       # Informations de base
       echo "📊 Informations générales :"
-      docker ps -a --filter "name={{.CONTAINER_NAME}}" --format "table {.Names}\t{.Image}\t{.Status}\t{.Ports}"
+      docker ps -a --filter "name={{.CONTAINER_NAME}}" --format "table {{`{{.Names}}`}}\t{{`{{.Image}}`}}\t{{`{{.Status}}`}}\t{{`{{.Ports}}`}}"
 
       echo ""
       echo "🏥 État de santé :"
-      health_status=$(docker inspect {{.CONTAINER_NAME}} --format='{.State.Health.Status}' 2>/dev/null || echo "no-healthcheck")
+      health_status=$(docker inspect {{.CONTAINER_NAME}} --format='{{`{{.State.Health.Status}}`}}' 2>/dev/null || echo "no-healthcheck")
 
       case $health_status in
         "healthy")
@@ -81,7 +81,7 @@ tasks:
         "unhealthy")
           echo "  ❌ Non sain"
           echo "  📋 Derniers checks :"
-          docker inspect {{.CONTAINER_NAME}} --format='{range .State.Health.Log}{.Start} - {.ExitCode} - {.Output}{end}' | tail -5
+          docker inspect {{.CONTAINER_NAME}} --format='{range .State.Health.Log}{{`{{.Start}}`}} - {{`{{.ExitCode}}`}} - {{`{{.Output}}`}}{end}' | tail -5
           ;;
         "starting")
           echo "  🟡 Démarrage en cours"
@@ -96,7 +96,7 @@ tasks:
 
       echo ""
       echo "💾 Utilisation des ressources :"
-      docker stats {{.CONTAINER_NAME}} --no-stream --format "table {.Container}\t{.CPUPerc}\t{.MemUsage}\t{.NetIO}\t{.BlockIO}"
+      docker stats {{.CONTAINER_NAME}} --no-stream --format "table {{`{{.Container}}`}}\t{{`{{.CPUPerc}}`}}\t{{`{{.MemUsage}}`}}\t{{`{{.NetIO}}`}}\t{{`{{.BlockIO}}`}}"
 
   batch:status:
     desc: "Vérifie le statut de plusieurs conteneurs"
@@ -141,12 +141,12 @@ tasks:
         echo "🔍 $container :"
         
         # Vérifier si le conteneur existe et est en cours d'exécution
-        if docker ps --filter "name=$full_name" --format "{.Names}" | grep -q "$full_name"; then
-          status=$(docker ps --filter "name=$full_name" --format "{.Status}")
+        if docker ps --filter "name=$full_name" --format "{{`{{.Names}}`}}" | grep -q "$full_name"; then
+          status=$(docker ps --filter "name=$full_name" --format "{{`{{.Status}}`}}")
           echo "  ✅ Actif - $status"
           
           # Vérifier l'état de santé si disponible
-          health_status=$(docker inspect "$full_name" --format='{.State.Health.Status}' 2>/dev/null || echo "no-healthcheck")
+          health_status=$(docker inspect "$full_name" --format='{{`{{.State.Health.Status}}`}}' 2>/dev/null || echo "no-healthcheck")
           if [ "$health_status" != "no-healthcheck" ]; then
             case $health_status in
               "healthy") echo "  🏥 Sain" ;;
