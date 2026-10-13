@@ -30,3 +30,4 @@
 
 - Réservée aux mainteneurs sur `main` : `npm run release` (`release-it`, `publish: false`, `CHANGELOG.md` via `auto-changelog`).
 - Le hook `before:init` ne fait aucune mutation (`git fetch --dry-run` + `task lint:all`).
+- La section manuelle de `CHANGELOG.md` (highlights marqués « Section manuelle ») doit survivre à chaque release : la CI (`lint`, step `Check manual changelog section`) échoue si elle disparaît ; la restaurer depuis le `README.md` (§ Migration) si besoin.

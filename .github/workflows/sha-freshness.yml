@@ -1,0 +1,78 @@
+# Rappel mensuel : les versions `.phar` épinglées dans
+# `download/php/Taskfile.yml` (`*_VERSION` + `*_SHA256`) pourrissent à chaque
+# release amont. Ce workflow échoue dès qu'une version plus récente existe en
+# amont (ou qu'une URL devient injoignable).
+#
+# Quand il est rouge : monter `*_VERSION`, recalculer avec
+# `task download:php:checksum` après un téléchargement de confiance, mettre à
+# jour les défauts `*_SHA256`, puis merger vers `main`.
+name: SHA freshness reminder
+on:
+  schedule:
+    - cron: '0 6 1 * *' # le 1er de chaque mois à 06:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  freshness:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Check upstream versions vs pinned defaults
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          # Version épinglée lue dans download/php/Taskfile.yml.
+          pinned() {
+            grep -E "^  $1:" download/php/Taskfile.yml | grep -Eo '[0-9][0-9A-Za-z._-]*' | head -n 1
+          }
+
+          # Dernier tag GitHub (préfixe `v` éventuel retiré pour comparer).
+          latest() {
+            curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/repos/$1/releases/latest" \
+              | jq -r .tag_name | sed 's/^v//'
+          }
+
+          fail=0
+          check() { # $1 = dépôt GitHub, $2 = var *_VERSION
+            latest_tag="$(latest "$1" || true)"
+            pinned_ver="$(pinned "$2" || true)"
+            if [ -z "$latest_tag" ]; then
+              echo "⚠️  $2 : impossible de lire la release amont ($1, API injoignable ?)"
+              fail=1
+            elif [ "$latest_tag" != "$pinned_ver" ]; then
+              echo "⚠️  $2 : épinglé=$pinned_ver, amont=$latest_tag ($1) → monter version + SHA"
+              fail=1
+            else
+              echo "✅ $2=$pinned_ver à jour ($1)"
+            fi
+          }
+
+          check "FriendsOfPHP/PHP-CS-Fixer" "PHP_CS_FIXER_VERSION"
+          check "phpmd/phpmd" "PHPMD_VERSION"
+          check "squizlabs/PHP_CodeSniffer" "PHP_CODESNIFFER_VERSION"
+          check "phpstan/phpstan" "PHPSTAN_VERSION"
+          check "phpDocumentor/phpDocumentor" "PHPDOCUMENTOR_VERSION"
+          check "Behat/Behat" "BEHAT_VERSION"
+
+          # phploc n'a pas d'API de releases : on vérifie au moins que l'URL
+          # épinglée répond (téléchargement léger, jeté aussitôt).
+          if curl -fsSL -o /dev/null "https://phar.phpunit.de/phploc-$(pinned PHPLOC_VERSION).phar"; then
+            echo "✅ PHPLOC_VERSION=$(pinned PHPLOC_VERSION) URL joignable"
+          else
+            echo "⚠️  PHPLOC : URL épinglée injoignable"
+            fail=1
+          fi
+
+          if [ "$fail" -ne 0 ]; then
+            echo ""
+            echo "❌ Fraîcheur SHA/versions à revoir (voir l'en-tête de ce workflow)"
+            exit 1
+          fi
+          echo ""
+          echo "✅ Toutes les versions épinglées sont à jour"
