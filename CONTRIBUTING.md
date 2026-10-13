@@ -8,6 +8,7 @@
    - `task lint:all` (doit être vert, `CHANGELOG.md` auto-généré exclu)
    - `task lint:shell` (shellcheck des blocs embarqués, doit être vert)
    - `task validate` (`lint:all` + `env:validate`)
+   - `task test` (suite bats, doit être verte)
    - `task --list-all` reste cohérent avec `README.md` et `task help:<namespace>`
 4. Ouvrir une Pull Request vers `develop` (la release se fait depuis `main` via `release-it`).
 

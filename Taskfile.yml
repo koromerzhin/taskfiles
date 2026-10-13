@@ -66,7 +66,7 @@ tasks:
       echo "  • download - Téléchargement d'outils"
       echo "  • utils    - Utilitaires divers"
       echo "  • apache   - Configuration Apache"
-      echo "  • lint     - Linting YAML/Markdown"
+      echo "  • lint     - Linting YAML/Markdown/Shell/Actions/Docker"
       echo "  • help     - Aide détaillée"
 
   help:
@@ -84,3 +84,12 @@ tasks:
     - task: lint:all
     - task: env:validate
     - echo "✅ Validation terminée avec succès"
+
+  test:
+    desc: "Lance la suite de tests bats"
+    silent: true
+    preconditions:
+    - sh: command -v bats
+      msg: "bats n'est pas installé (apt install bats)"
+    cmds:
+    - bats test/

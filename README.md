@@ -73,8 +73,26 @@ Consultez `.env.example` (variables documentées) et `task env:show` /
 - **nodejs** : install/init/add-dev-deps (`task nodejs --list-all`)
 - **download** : outils PHP `.phar` (`task download --list-all`)
 - **apache** : mise à jour config Apache (`task apache --list-all`)
-- **lint** : lint YAML/Markdown/Docker/Actions (`task lint --list-all`)
+- **lint** : lint YAML/Markdown/Shell/Actions/Docker (`task lint --list-all`)
 - **help** : aide détaillée (`task help:default`)
+
+## ⬆️ Migration v1 → v2 (ruptures)
+
+- **docker:create** : plus de défauts personnels — `CONTAINER_NAME` et
+  `IMAGE_NAME` sont requis :
+  `task docker:create CONTAINER_NAME=mon-conteneur IMAGE_NAME=nginx:latest`
+  (avant : `labstag-php` / `koromerzhin/php:8.4.13-apache-symfony` implicites).
+- **docker:getfile** : `CONTAINER_NAME` requis ; `DEST_PATH` défaute vers
+  `./<container>.env` (plus jamais `./.env`) et l'écrasement d'une
+  destination existante exige `FORCE=true` (backup `.bak` automatique) :
+  `task docker:getfile CONTAINER_NAME=mon-conteneur DEST_PATH=./.env FORCE=true`.
+- **download:php** : `PHP_CODESNIFFER_SHA256` unique remplacée par
+  `PHP_CODESNIFFER_PHPCBF_SHA256` + `PHP_CODESNIFFER_PHPCS_SHA256`
+  (les deux `.phar` ont des sommes distinctes) ; `phpstan` 1.12.4 → 2.3.1
+  et `php-cs-fixer` 3.64.0 → 3.95.27 (surchargeables via `*_VERSION`,
+  sommes via `*_SHA256`, recalculables avec `task download:php:checksum`).
+- **lint:all** : couvre désormais `yml`, `md`, `shell`, `action` et `docker`
+  (prévoir `go` et `python3-yaml` en local, déjà installés par la CI).
 
 ## 🤝 Contribution
 
