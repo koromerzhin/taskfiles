@@ -69,10 +69,11 @@ tasks:
       echo "🔍 Validation du fichier {{.ENV_FILE}}..."
       echo ""
 
-      # Chargement des variables
-      set -a
-      source "{{.ENV_FILE}}"
-      set +a
+      # Lecture passive du .env (sans source/eval : ne jamais exécuter son contenu,
+      # un .env piégé avec $(...) ou `...` ne doit pas exécuter de code)
+      get_var() {
+        grep -E "^[[:space:]]*(export[[:space:]]+)?$1[[:space:]]*=" "{{.ENV_FILE}}" | tail -n 1 | sed -E 's/^[^=]*=//' | sed -E 's/^[[:space:]]+//;s/[[:space:]]+$//' | sed -E "s/^(['\"])(.*)\\1\$/\\2/"
+      }
 
       # Vérification des variables critiques
       missing_vars=""
@@ -81,7 +82,7 @@ tasks:
       # Variables obligatoires
       required_vars="PROJECT_NAME ENVIRONMENT"
       for var in $required_vars; do
-        eval "value=\$$var"
+        value="$(get_var "$var")"
         if [ -z "$value" ]; then
           missing_vars="$missing_vars $var"
         else
@@ -90,7 +91,8 @@ tasks:
       done
 
       # Validation des valeurs
-      if [ -n "$ENVIRONMENT" ] && ! echo "$ENVIRONMENT" | grep -qE "^(development|staging|production)$"; then
+      env_value="$(get_var ENVIRONMENT)"
+      if [ -n "$env_value" ] && ! printf '%s' "$env_value" | grep -qE "^(development|staging|production)$"; then
         invalid_vars="$invalid_vars ENVIRONMENT(valeurs_valides:development,staging,production)"
       fi
 

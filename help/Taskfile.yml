@@ -16,9 +16,12 @@ tasks:
     - echo "  • nodejs   - Projets Node.js"
     - echo "  • download - Téléchargement d'outils"
     - echo "  • utils    - Utilitaires divers"
+    - echo "  • apache   - Configuration Apache"
+    - echo "  • lint     - Linting YAML/Markdown"
+    - echo "  • help     - Aide détaillée"
     - echo ""
     - echo "💡 Utilisez 'task help:<namespace>' pour l'aide détaillée"
-    - echo "📖 Consultez USAGE.md pour la documentation complète"
+    - echo "📖 Utilisez 'task --list-all' ou consultez README.md pour la documentation complète"
 
   docker:
     desc: "Aide pour le namespace docker"
@@ -51,27 +54,22 @@ tasks:
     silent: true
     summary: |
       Affiche l'aide pour le téléchargement d'outils de développement.
-      Couvre les outils PHP et Python avec gestion automatisée.
+      Couvre les outils PHP avec gestion automatisée.
     cmds:
     - echo "⬇️  Namespace Download - Téléchargement d'outils"
     - echo ""
     - echo "🎯 Langages disponibles :"
     - echo "  • PHP    - Collection d'outils de qualité et analyse"
-    - echo "  • Python - Outils de développement et linting"
     - echo ""
     - echo "📋 Sous-namespaces :"
     - echo "  • php    - Gestion des outils PHP (.phar)"
-    - echo "  • python - Gestion des outils Python (pip)"
     - echo ""
     - echo "🔧 Exemples d'utilisation :"
     - echo "  • task download:php:tools    - Télécharge tous les outils PHP"
     - echo "  • task download:php:list     - Liste les outils PHP"
-    - echo "  • task download:python:tools - Installe tous les outils Python"
-    - echo "  • task download:python:list  - Liste les outils Python"
     - echo ""
-    - echo "🔗 Aliases de compatibilité :"
+    - echo "🔗 Alias de compatibilité :"
     - echo "  • task download:php-tools (utilise php:tools)"
-    - echo "  • task download:python-tools (utilise python:tools)"
     - echo ""
     - echo "🔍 Tâches disponibles :"
     - task download --list-all

@@ -38,4 +38,11 @@ tasks:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
     cmds:
-    - docker cp {{.CONTAINER_NAME}}:{{.FILE_PATH}} {{.DEST_PATH}}
+    - |
+      # Garde-fou : DEST_PATH défaute vers ./.env — backup avant écrasement (défaut conservé, récupérable)
+      if [ -f "{{.DEST_PATH}}" ]; then
+        bak="{{.DEST_PATH}}.bak.$(date +%Y-%m-%d_%H-%M-%S)"
+        echo "⚠️  {{.DEST_PATH}} existe déjà → backup vers $bak"
+        cp -p "{{.DEST_PATH}}" "$bak"
+      fi
+      docker cp {{.CONTAINER_NAME}}:{{.FILE_PATH}} {{.DEST_PATH}}

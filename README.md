@@ -1,5 +1,9 @@
 # Taskfiles Collection 🛠️
 
+[![CI](https://github.com/koromerzhin/taskfiles/actions/workflows/ci.yml/badge.svg)](https://github.com/koromerzhin/taskfiles/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/github/package-json/v/koromerzhin/taskfiles)](CHANGELOG.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Une collection de scripts Taskfiles réutilisables pour automatiser les tâches
  courantes dans différents types de projets de développement.
 
@@ -44,8 +48,8 @@ Ce projet supporte l'utilisation de variables d'environnement via un
     task env:init
 ```
 
-Voir [ENV.md](ENV.md) pour la documentation complète des variables
- d'environnement.
+Consultez `.env.example` (variables documentées) et `task env:show` /
+  `task env:validate` pour vérifier votre configuration.
 
 ### Utilisation basique
 
@@ -61,9 +65,16 @@ Voir [ENV.md](ENV.md) pour la documentation complète des variables
     task nom-de-la-tache
 ```
 
-## 🔧 Technologies supportées
+## 🔧 Namespaces disponibles
 
-- **Docker** : Build, Run, Compose, Cleanup
+- **docker** : conteneurs, images, stacks Swarm, réseaux, logs, monitoring (`task docker --list-all`)
+- **utils** : sauvegardes, nettoyage logs/temp/caches, fichiers, système (`task utils --list-all`)
+- **env** : init/validate/show/backup du `.env` (`task env --list-all`)
+- **nodejs** : install/init/add-dev-deps (`task nodejs --list-all`)
+- **download** : outils PHP `.phar` (`task download --list-all`)
+- **apache** : mise à jour config Apache (`task apache --list-all`)
+- **lint** : lint YAML/Markdown/Docker/Actions (`task lint --list-all`)
+- **help** : aide détaillée (`task help:default`)
 
 ## 🤝 Contribution
 
