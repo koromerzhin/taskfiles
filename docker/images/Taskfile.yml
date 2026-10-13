@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
 version: '3'
 
 tasks:
@@ -89,15 +90,13 @@ tasks:
       echo ""
 
       # Téléchargement individuel de chaque image
+      # (pas de gate sur le format : digests, registries avec port et tags
+      # complexes sont légitimes — `docker pull` échoue proprement sinon)
       printf '%s\n' "$images" | while read -r image; do
         if [ -n "$image" ] && [ "$image" != "null" ]; then
           image=$(echo "$image" | tr -d '\r\n' | xargs)
-          if [[ "$image" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]]; then
-            echo "⬇️  Téléchargement de $image..."
-            docker pull "$image" || echo "⚠️  Échec du téléchargement de $image"
-          else
-            echo "⚠️  Format d'image invalide: '$image'"
-          fi
+          echo "⬇️  Téléchargement de $image..."
+          docker pull "$image" || echo "⚠️  Échec du téléchargement de $image"
         fi
       done
 
