@@ -11,14 +11,22 @@ vars:
     phpDocumentor.phar
     behat.phar
   PHP_TOOLS_URLS: |
-    https://phar.phpunit.de/phploc-7.0.2.phar
-    https://github.com/FriendsOfPHP/PHP-CS-Fixer/releases/download/v3.64.0/php-cs-fixer.phar
-    https://github.com/phpmd/phpmd/releases/download/2.15.0/phpmd.phar
-    https://github.com/squizlabs/PHP_CodeSniffer/releases/download/3.7.2/phpcbf.phar
-    https://github.com/squizlabs/PHP_CodeSniffer/releases/download/3.7.2/phpcs.phar
-    https://github.com/phpstan/phpstan/releases/download/1.12.4/phpstan.phar
-    https://github.com/phpDocumentor/phpDocumentor/releases/download/v3.5.3/phpDocumentor.phar
-    https://github.com/Behat/Behat/releases/download/v3.14.0/behat.phar
+    https://phar.phpunit.de/phploc-{{.PHPLOC_VERSION}}.phar
+    https://github.com/FriendsOfPHP/PHP-CS-Fixer/releases/download/v{{.PHP_CS_FIXER_VERSION}}/php-cs-fixer.phar
+    https://github.com/phpmd/phpmd/releases/download/{{.PHPMD_VERSION}}/phpmd.phar
+    https://github.com/squizlabs/PHP_CodeSniffer/releases/download/{{.PHP_CODESNIFFER_VERSION}}/phpcbf.phar
+    https://github.com/squizlabs/PHP_CodeSniffer/releases/download/{{.PHP_CODESNIFFER_VERSION}}/phpcs.phar
+    https://github.com/phpstan/phpstan/releases/download/{{.PHPSTAN_VERSION}}/phpstan.phar
+    https://github.com/phpDocumentor/phpDocumentor/releases/download/v{{.PHPDOCUMENTOR_VERSION}}/phpDocumentor.phar
+    https://github.com/Behat/Behat/releases/download/v{{.BEHAT_VERSION}}/behat.phar
+  # Versions épinglées — surchargeables sans éditer le code (ex. PHPSTAN_VERSION=2.1.0)
+  PHPLOC_VERSION: '{{.PHPLOC_VERSION | default "7.0.2"}}'
+  PHP_CS_FIXER_VERSION: '{{.PHP_CS_FIXER_VERSION | default "3.64.0"}}'
+  PHPMD_VERSION: '{{.PHPMD_VERSION | default "2.15.0"}}'
+  PHP_CODESNIFFER_VERSION: '{{.PHP_CODESNIFFER_VERSION | default "3.7.2"}}'
+  PHPSTAN_VERSION: '{{.PHPSTAN_VERSION | default "1.12.4"}}'
+  PHPDOCUMENTOR_VERSION: '{{.PHPDOCUMENTOR_VERSION | default "3.5.3"}}'
+  BEHAT_VERSION: '{{.BEHAT_VERSION | default "3.14.0"}}'
 
 tasks:
   tools:
@@ -30,6 +38,9 @@ tasks:
       Variables:
       - TOOLS_DIR: Dossier de destination (défaut: ./tools/php)
       - FORCE: Force le téléchargement même si le fichier existe (défaut: false)
+      - Versions épinglées (surchargeables) : PHPLOC_VERSION, PHP_CS_FIXER_VERSION,
+        PHPMD_VERSION, PHP_CODESNIFFER_VERSION, PHPSTAN_VERSION,
+        PHPDOCUMENTOR_VERSION, BEHAT_VERSION
 
       Outils téléchargés:
       - phploc.phar (PHP Lines of Code)
@@ -45,6 +56,7 @@ tasks:
       task download:php:tools
       task download:php:tools TOOLS_DIR=./bin
       task download:php:tools FORCE=true
+      task download:php:tools PHPSTAN_VERSION=2.1.0
     vars:
       TOOLS_DIR: '{{.TOOLS_DIR | default "./tools/php"}}'
       FORCE: '{{.FORCE | default "false"}}'
