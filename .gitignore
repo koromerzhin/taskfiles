@@ -13,3 +13,6 @@ backups/
 # Outils téléchargés (download:*) et artefacts générés
 tools/
 docker-images.txt
+
+# Docs de travail locales (analyses, brouillons) — non versionnées
+analyse.md
