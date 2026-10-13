@@ -6,6 +6,7 @@
 2. Faire vos changements en respectant les conventions ci-dessous.
 3. Vérifier en local avant de pousser :
    - `task lint:all` (doit être vert, `CHANGELOG.md` auto-généré exclu)
+   - `task lint:shell` (shellcheck des blocs embarqués, doit être vert)
    - `task validate` (`lint:all` + `env:validate`)
    - `task --list-all` reste cohérent avec `README.md` et `task help:<namespace>`
 4. Ouvrir une Pull Request vers `develop` (la release se fait depuis `main` via `release-it`).

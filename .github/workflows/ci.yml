@@ -31,18 +31,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'package-lock.json'
 
-      - name: Setup cache
-        uses: actions/cache@v6
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: ${{ runner.os }}-node-
-
+      # Note : pas de actions/cache sur node_modules — setup-node met déjà en
+      # cache le cache npm, et `npm ci` (install propre, échoue si le lock
+      # est désynchronisé) rend tout node_modules restauré obsolète/dangereux.
       - name: Install dependencies
-        run: |
-            if [ ! -d node_modules ]; then
-                npm install
-            fi
+        run: npm ci
       
       - name: Setup environment files
         run: |
@@ -50,3 +43,24 @@ jobs:
       
       - name: lint all
         run: task lint:all
+
+  shellcheck:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Setup Task
+        uses: go-task/setup-task@v2
+
+      - name: Setup Python YAML lib
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq python3-yaml
+
+      # task lint:shell auto-installe shellcheck épinglé (v0.11.0) si absent,
+      # extrait les cmds: des Taskfiles (templates masqués) et échoue sur
+      # tout avertissement réel. Bloquant dès le jour 1 (état vert vérifié).
+      - name: shellcheck embedded scripts
+        run: task lint:shell
