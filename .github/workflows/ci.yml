@@ -31,6 +31,10 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'package-lock.json'
 
+      # Politique de versions : `stable` volontaire ici — seul le binaire qui
+      # compte (`actionlint`, installé par `task lint:action`) est épinglé
+      # (v1.7.12, voir lint/Taskfile.yml). Même logique côté npm : plages
+      # assumées (package.json), `npm ci` + lock pour la reproductibilité.
       - name: Setup Go (requis par lint:action)
         uses: actions/setup-go@v6
         with:
@@ -51,6 +55,13 @@ jobs:
       
       - name: lint all
         run: task lint:all
+
+      # Le `.env` ne sert qu'aux tâches (dotenv racine) : nettoyé en fin de
+      # job pour ne pas laisser de pattern polluant (anodin sur runner
+      # éphémère, utile si copié dans un projet réel).
+      - name: Cleanup environment files
+        if: always()
+        run: rm -f .env
 
   test:
     runs-on: ubuntu-26.04

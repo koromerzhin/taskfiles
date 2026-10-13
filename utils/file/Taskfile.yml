@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
 version: '3'
 
 tasks:
@@ -39,7 +40,7 @@ tasks:
       force="{{.FORCE}}"
 
       # Résout les chemins absolus
-      source_file=$(realpath "$source_file")
+      source_file=$(realpath "$source_file" 2>/dev/null || printf '%s' "$source_file")
       dest_dir=$(realpath "$dest_dir" 2>/dev/null || echo "$dest_dir")
 
       # Détermine le nom du fichier de destination
@@ -127,7 +128,7 @@ tasks:
       force="{{.FORCE}}"
 
       # Résout les chemins absolus
-      source_file=$(realpath "$source_file")
+      source_file=$(realpath "$source_file" 2>/dev/null || printf '%s' "$source_file")
       dest_dir=$(realpath "$dest_dir" 2>/dev/null || echo "$dest_dir")
 
       # Détermine le nom du fichier de destination
@@ -214,7 +215,7 @@ tasks:
       force="{{.FORCE}}"
 
       # Résout le chemin absolu du fichier source
-      source_file=$(realpath "$source_file")
+      source_file=$(realpath "$source_file" 2>/dev/null || printf '%s' "$source_file")
       source_dir=$(dirname "$source_file")
       final_dest="$source_dir/$new_name"
 
@@ -281,7 +282,7 @@ tasks:
       force="{{.FORCE}}"
 
       # Résout le chemin absolu
-      source_file=$(realpath "$source_file")
+      source_file=$(realpath "$source_file" 2>/dev/null || printf '%s' "$source_file")
 
       echo "🗑️  Suppression de fichier :"
       echo "  📄 Fichier : $source_file"

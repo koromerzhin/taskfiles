@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
 version: '3'
 
 # Taskfile pour les informations système
@@ -80,7 +81,7 @@ tasks:
       Variables:
       - SKIP_NETWORK_CHECK: Désactive les pings (défaut: false, utile hors-ligne/CI)
       - PING_COUNT: Nombre de paquets (défaut: 1)
-      - PING_TIMEOUT: Timeout en secondes par ping (défaut: 2, option -W Linux)
+      - PING_TIMEOUT: Timeout en secondes par ping (défaut: 2, option -W sous Linux, -t sous macOS)
       - PING_TARGET: Cible du test Internet (défaut: 8.8.8.8)
       - GITHUB_TARGET: Cible du test DNS distant (défaut: github.com)
     vars:
@@ -107,17 +108,24 @@ tasks:
       echo ""
 
       # Test de connectivité (timeouts courts, désactivable hors-ligne/CI via SKIP_NETWORK_CHECK=true)
+      # Portabilité : macOS/BSD n'ont pas `ping -W` (timeout par paquet Linux),
+      # on utilise `-t` (timeout global) sur Darwin.
       echo "🔗 Test de connectivité :"
       if [ "{{.SKIP_NETWORK_CHECK}}" = "true" ]; then
         echo "  ⏭️  Tests ignorés (SKIP_NETWORK_CHECK=true)"
       else
-        if ping -c {{.PING_COUNT}} -W {{.PING_TIMEOUT}} {{.PING_TARGET}} >/dev/null 2>&1; then
+        if [ "$(uname -s)" = "Darwin" ]; then
+          ping_timeout_opt="-t"
+        else
+          ping_timeout_opt="-W"
+        fi
+        if ping -c {{.PING_COUNT}} $ping_timeout_opt {{.PING_TIMEOUT}} {{.PING_TARGET}} >/dev/null 2>&1; then
           echo "  ✅ Internet: Accessible"
         else
           echo "  ❌ Internet: Non accessible"
         fi
 
-        if ping -c {{.PING_COUNT}} -W {{.PING_TIMEOUT}} {{.GITHUB_TARGET}} >/dev/null 2>&1; then
+        if ping -c {{.PING_COUNT}} $ping_timeout_opt {{.PING_TIMEOUT}} {{.GITHUB_TARGET}} >/dev/null 2>&1; then
           echo "  ✅ GitHub: Accessible"
         else
           echo "  ❌ GitHub: Non accessible"
