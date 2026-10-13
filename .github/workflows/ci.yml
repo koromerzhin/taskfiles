@@ -31,18 +31,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'package-lock.json'
 
-      - name: Setup cache
-        uses: actions/cache@v6
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: ${{ runner.os }}-node-
-
+      # Note : pas de actions/cache sur node_modules — setup-node met déjà en
+      # cache le cache npm, et `npm ci` (install propre, échoue si le lock
+      # est désynchronisé) rend tout node_modules restauré obsolète/dangereux.
       - name: Install dependencies
-        run: |
-            if [ ! -d node_modules ]; then
-                npm install
-            fi
+        run: npm ci
       
       - name: Setup environment files
         run: |
