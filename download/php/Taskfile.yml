@@ -19,12 +19,12 @@ vars:
     https://github.com/phpstan/phpstan/releases/download/{{.PHPSTAN_VERSION}}/phpstan.phar
     https://github.com/phpDocumentor/phpDocumentor/releases/download/v{{.PHPDOCUMENTOR_VERSION}}/phpDocumentor.phar
     https://github.com/Behat/Behat/releases/download/v{{.BEHAT_VERSION}}/behat.phar
-  # Versions épinglées — surchargeables sans éditer le code (ex. PHPSTAN_VERSION=2.1.0)
+  # Versions épinglées — surchargeables sans éditer le code (ex. PHPSTAN_VERSION=2.3.1)
   PHPLOC_VERSION: '{{.PHPLOC_VERSION | default "7.0.2"}}'
-  PHP_CS_FIXER_VERSION: '{{.PHP_CS_FIXER_VERSION | default "3.64.0"}}'
+  PHP_CS_FIXER_VERSION: '{{.PHP_CS_FIXER_VERSION | default "3.95.27"}}'
   PHPMD_VERSION: '{{.PHPMD_VERSION | default "2.15.0"}}'
   PHP_CODESNIFFER_VERSION: '{{.PHP_CODESNIFFER_VERSION | default "3.7.2"}}'
-  PHPSTAN_VERSION: '{{.PHPSTAN_VERSION | default "1.12.4"}}'
+  PHPSTAN_VERSION: '{{.PHPSTAN_VERSION | default "2.3.1"}}'
   PHPDOCUMENTOR_VERSION: '{{.PHPDOCUMENTOR_VERSION | default "3.5.3"}}'
   BEHAT_VERSION: '{{.BEHAT_VERSION | default "3.14.0"}}'
   # Sommes SHA256 attendues — vides par défaut (vérification ignorée), à renseigner
@@ -53,6 +53,9 @@ tasks:
       - Sommes SHA256 (optionnelles, vérifiées avant chmod +x si renseignées) :
         PHPLOC_SHA256, PHP_CS_FIXER_SHA256, PHPMD_SHA256,
         PHP_CODESNIFFER_SHA256, PHPSTAN_SHA256, PHPDOCUMENTOR_SHA256, BEHAT_SHA256
+        (vides par défaut : utilisez `task download:php:checksum` après un
+        téléchargement de confiance pour les figer, ou reprenez les sommes
+        publiées sur les GitHub Releases officielles)
 
       Outils téléchargés:
       - phploc.phar (PHP Lines of Code)
@@ -68,15 +71,18 @@ tasks:
       task download:php:tools
       task download:php:tools TOOLS_DIR=./bin
       task download:php:tools FORCE=true
-      task download:php:tools PHPSTAN_VERSION=2.1.0
+      task download:php:tools PHPSTAN_VERSION=2.3.1
     vars:
       TOOLS_DIR: '{{.TOOLS_DIR | default "./tools/php"}}'
       FORCE: '{{.FORCE | default "false"}}'
     cmds:
     - |
-      # Naviguer vers la racine du projet (parent du dossier download)
-      cd ..
-      project_root=$(pwd)
+      # Racine du projet : git toplevel si dispo, sinon TASKFILE_DIR/../.. (ce fichier vit à download/php/)
+      if git rev-parse --show-toplevel >/dev/null 2>&1; then
+        project_root=$(git rev-parse --show-toplevel)
+      else
+        project_root="$(cd "{{.TASKFILE_DIR}}/../.." && pwd)"
+      fi
 
       # Déterminer le chemin absolu du dossier de destination
       if [[ "{{.TOOLS_DIR}}" == /* ]]; then
@@ -232,9 +238,12 @@ tasks:
       TOOLS_DIR: '{{.TOOLS_DIR | default "./tools/php"}}'
     cmds:
     - |
-      # Naviguer vers la racine du projet (parent du dossier download)
-      cd ..
-      project_root=$(pwd)
+      # Racine du projet : git toplevel si dispo, sinon TASKFILE_DIR/../.. (ce fichier vit à download/php/)
+      if git rev-parse --show-toplevel >/dev/null 2>&1; then
+        project_root=$(git rev-parse --show-toplevel)
+      else
+        project_root="$(cd "{{.TASKFILE_DIR}}/../.." && pwd)"
+      fi
 
       # Déterminer le chemin absolu du dossier de destination
       if [[ "{{.TOOLS_DIR}}" == /* ]]; then
@@ -286,6 +295,63 @@ tasks:
         echo "   task download:php:tools"
       fi
 
+  checksum:
+    desc: "Affiche les SHA256 des outils téléchargés (pour remplir *_SHA256)"
+    silent: true
+    summary: |
+      Calcule les SHA256 des .phar présents pour verrouiller la chaîne
+      d'approvisionnement : relancez ensuite `tools` avec les sommes affichées
+      (ex. task download:php:tools PHPSTAN_SHA256=<sha>).
+
+      Les sommes officielles sont aussi publiées sur les pages GitHub Releases
+      des outils — ne reprenez une somme locale que pour un binaire téléchargé
+      depuis l'URL officielle en HTTPS.
+
+      Variables:
+      - TOOLS_DIR: Dossier à vérifier (défaut: ./tools/php)
+    vars:
+      TOOLS_DIR: '{{.TOOLS_DIR | default "./tools/php"}}'
+    preconditions:
+    - sh: command -v sha256sum
+      msg: "sha256sum est requis pour calculer les sommes"
+    cmds:
+    - |
+      # Racine du projet : git toplevel si dispo, sinon TASKFILE_DIR/../.. (ce fichier vit à download/php/)
+      if git rev-parse --show-toplevel >/dev/null 2>&1; then
+        project_root=$(git rev-parse --show-toplevel)
+      else
+        project_root="$(cd "{{.TASKFILE_DIR}}/../.." && pwd)"
+      fi
+      if [[ "{{.TOOLS_DIR}}" == /* ]]; then
+        tools_dir="{{.TOOLS_DIR}}"
+      else
+        tools_dir="$project_root/{{.TOOLS_DIR}}"
+      fi
+      if [ ! -d "$tools_dir" ]; then
+        echo "❌ Le dossier '$tools_dir' n'existe pas"
+        exit 1
+      fi
+      tool_names_raw="{{.PHP_TOOLS_NAMES}}"
+      while IFS= read -r tool; do
+        [ -z "$tool" ] && continue
+        case "$tool" in
+          "phploc.phar") var="PHPLOC_SHA256" ;;
+          "php-cs-fixer.phar") var="PHP_CS_FIXER_SHA256" ;;
+          "phpmd.phar") var="PHPMD_SHA256" ;;
+          "phpcbf.phar"|"phpcs.phar") var="PHP_CODESNIFFER_SHA256" ;;
+          "phpstan.phar") var="PHPSTAN_SHA256" ;;
+          "phpDocumentor.phar") var="PHPDOCUMENTOR_SHA256" ;;
+          "behat.phar") var="BEHAT_SHA256" ;;
+          *) var="UNKNOWN" ;;
+        esac
+        if [ -f "$tools_dir/$tool" ]; then
+          sum=$(sha256sum "$tools_dir/$tool" | awk '{print $1}')
+          echo "$var=\"$sum\"  # $tool"
+        else
+          echo "# $tool manquant — var $var non calculable"
+        fi
+      done <<< "$tool_names_raw"
+
   clean:
     desc: "Supprime tous les outils PHP téléchargés"
     silent: true
@@ -301,9 +367,12 @@ tasks:
       FORCE: '{{.FORCE | default "false"}}'
     cmds:
     - |
-      # Naviguer vers la racine du projet (parent du dossier download)
-      cd ..
-      project_root=$(pwd)
+      # Racine du projet : git toplevel si dispo, sinon TASKFILE_DIR/../.. (ce fichier vit à download/php/)
+      if git rev-parse --show-toplevel >/dev/null 2>&1; then
+        project_root=$(git rev-parse --show-toplevel)
+      else
+        project_root="$(cd "{{.TASKFILE_DIR}}/../.." && pwd)"
+      fi
 
       # Déterminer le chemin absolu du dossier de destination
       if [[ "{{.TOOLS_DIR}}" == /* ]]; then

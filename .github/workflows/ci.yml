@@ -31,6 +31,14 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'package-lock.json'
 
+      - name: Setup Go (requis par lint:action)
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      - name: Setup Python YAML lib (requis par lint:shell)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq python3-yaml
+
       # Note : pas de actions/cache sur node_modules — setup-node met déjà en
       # cache le cache npm, et `npm ci` (install propre, échoue si le lock
       # est désynchronisé) rend tout node_modules restauré obsolète/dangereux.

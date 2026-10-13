@@ -25,6 +25,14 @@ tasks:
   add-dev-deps:
     desc: "Ajoute les devDependencies communes si elles ne sont pas déjà présentes"
     silent: true
+    summary: |
+      Installe les devDependencies listées dans DEV_DEPS (espace-séparées).
+
+      Politique de versions (volontairement flottant par défaut : outil générique,
+      pas template de projet) : chaque entrée peut être épinglée au format
+      npm `pkg@version` (ex. DEV_DEPS="markdownlint-cli@0.49.0"). Sans `@version`,
+      npm résout `latest` au jour du run — mute package.json/lock en conséquence.
+      Pour une install reproductible, passez des versions explicites.
     preconditions:
     - sh: command -v npm
       msg: "npm n'est pas installé ou accessible"
@@ -45,8 +53,12 @@ tasks:
       skipped=0
 
       for package_name in $packages; do
+        # Support pkg@version : vérifie la présence sur le nom de base (sans @version),
+        # mais installe l'entrée complète (avec version si fournie, ex. markdownlint-cli@0.49.0)
+        pkg_base=$(printf '%s' "$package_name" | sed -E 's/@[^@]+$//')
+        [ -z "$pkg_base" ] && pkg_base="$package_name"
         # Vérifie si le package est déjà dans devDependencies
-        if ! npm pkg get devDependencies | grep -q "\"$package_name\""; then
+        if ! npm pkg get devDependencies | grep -q "\"$pkg_base\""; then
           missing="$missing $package_name"
         else
           echo "⏭️  $package_name est déjà installé, ignoré."

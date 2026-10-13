@@ -8,7 +8,12 @@ tasks:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
     cmds:
-    - docker compose -f {{.DOCKERCOMPOSEFILE}} config 1>/dev/null
+    - |
+      if [ ! -f "{{.DOCKERCOMPOSEFILE}}" ]; then
+        echo "⏭️  {{.DOCKERCOMPOSEFILE}} introuvable, vérification Docker ignorée (repo sans compose)"
+        exit 0
+      fi
+      docker compose -f {{.DOCKERCOMPOSEFILE}} config 1>/dev/null
 
   action:
     desc: "Linter tous les fichiers Action (.yml dans .github/workflows)"

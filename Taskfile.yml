@@ -40,6 +40,9 @@ tasks:
     cmds:
     - task: lint:yml
     - task: lint:md
+    - task: lint:shell
+    - task: lint:action
+    - task: lint:docker
 
   info:
     desc: "Affiche les informations du projet avec les variables d'environnement"
