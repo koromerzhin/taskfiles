@@ -6,9 +6,16 @@
     "type": "git",
     "url": "git+https://github.com/koromerzhin/taskfiles.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "taskfile",
+    "task",
+    "automation",
+    "docker",
+    "devops"
+  ],
+  "author": "koromerzhin",
+  "license": "MIT",
+  "private": true,
   "bugs": {
     "url": "https://github.com/koromerzhin/taskfiles/issues"
   },

@@ -76,6 +76,8 @@ tasks:
         FIND_EXPR+=( "(" -path "./$d" -prune ")" -o )
       done
 
+      # CHANGELOG.md exclu : fichier auto-généré par auto-changelog (release-it),
+      # le lint markdown y remonterait du bruit à chaque release.
       find . "${FIND_EXPR[@]}" -type f -name '*.md' ! -path '*/node_modules/*' ! -path '*/vendor/*' ! -name 'CHANGELOG.md' -print | while IFS= read -r file; do
         echo "Vérification de $file"
         npx markdownlint-cli "$file"
