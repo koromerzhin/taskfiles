@@ -1,0 +1,74 @@
+version: '3'
+
+# Taskfile principal - Tâches globales et inclusions
+# Charge automatiquement les variables depuis le fichier .env s'il existe
+dotenv: [ '.env' ]
+
+includes:
+  docker: ./docker/Taskfile.yml
+  utils: ./utils/Taskfile.yml
+  env: ./env/Taskfile.yml
+  nodejs: ./nodejs/Taskfile.yml
+  download: ./download/Taskfile.yml
+  help: ./help/Taskfile.yml
+  apache: ./apache/Taskfile.yml
+  lint: ./lint/Taskfile.yml
+
+vars:
+  # Variables avec valeurs par défaut depuis .env ou valeurs de fallback
+  PROJECT_NAME: '{{.PROJECT_NAME | default "taskfiles-collection"}}'
+  ENVIRONMENT: '{{.ENVIRONMENT | default "development"}}'
+  TIMESTAMP: '{{now | date "2006-01-02 15:04:05"}}'
+
+tasks:
+  default:
+    desc: "Affiche l'aide et les tâches disponibles"
+    silent: true
+    cmds:
+    - echo "🛠️  Collection de Taskfiles pour le développement"
+    - echo ""
+    - echo "Tâches globales disponibles :"
+    - task --list
+    - echo ""
+    - echo "💡 Utilisez 'task <namespace>:<tâche>' pour accéder aux tâches spécialisées"
+    - echo "📚 Utilisez 'task help:<namespace>' pour l'aide détaillée d'un namespace"
+
+  lint:all:
+    desc: "Vérifie le code avec tous les outils de linting"
+    silent: true
+    cmds:
+    - task: lint:yml
+    - task: lint:md
+
+  info:
+    desc: "Affiche les informations du projet avec les variables d'environnement"
+    silent: true
+    cmds:
+    - |
+      export PROJECT_VERSION=$(jq -r .version package.json)
+      echo "🛠️  {{.PROJECT_NAME}} v$PROJECT_VERSION - Collection de Taskfiles"
+      echo "📅 {{.TIMESTAMP}}"
+      echo "🌍 Environnement: {{.ENVIRONMENT}}"
+      echo "📂 Répertoire: $(pwd)"
+      echo ""
+      echo "📋 Namespaces disponibles :"
+      echo "  • docker   - Gestion Docker et conteneurs"
+      echo "  • env      - Variables d'environnement"
+      echo "  • nodejs   - Projets Node.js"
+      echo "  • download - Téléchargement d'outils"
+      echo "  • utils    - Utilitaires divers"
+
+  help:
+    desc: "Affiche l'aide détaillée"
+    silent: true
+    aliases: [ h ]
+    cmds:
+    - task: help:default
+
+  validate:
+    desc: "Valide l'ensemble du projet"
+    silent: true
+    cmds:
+    - echo "🔍 Validation du projet {{.PROJECT_NAME}}..."
+    - task: env:validate
+    - echo "✅ Validation terminée avec succès"

@@ -1,0 +1,219 @@
+version: '3'
+
+# Taskfile pour le monitoring Docker - Surveillance et diagnostics
+
+includes:
+  container:
+    taskfile: ./container/Taskfile.yml
+    dir: ./container
+
+tasks:
+  events:
+    desc: "Surveille tous les événements Docker"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Affiche tous les événements Docker en temps réel (start, stop, create, destroy, etc.).
+
+      Variables:
+      - IMAGE_NAME: Filtrer par image (optionnel)
+      - EVENT_TYPE: Type d'événement (start, stop, create, destroy, etc.)
+
+      Exemples:
+      task docker:monitor:events
+      task docker:monitor:events EVENT_TYPE=start
+      task docker:monitor:events IMAGE_NAME=nginx EVENT_TYPE=start
+    vars:
+      EVENT_TYPE: '{{.EVENT_TYPE | default ""}}'
+      IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
+    cmds:
+    - |
+      echo "📡 Surveillance des événements Docker en temps réel..."
+      echo "   Appuyez sur Ctrl+C pour arrêter"
+      echo ""
+
+      filters="--filter container"
+
+      if [ -n "{{.IMAGE_NAME}}" ]; then
+        filters="$filters --filter image={{.IMAGE_NAME}}"
+        echo "🎯 Filtrage pour l'image: {{.IMAGE_NAME}}"
+      fi
+
+      if [ -n "{{.EVENT_TYPE}}" ]; then
+        filters="$filters --filter event={{.EVENT_TYPE}}"
+        echo "🎯 Filtrage pour l'événement: {{.EVENT_TYPE}}"
+      fi
+
+      echo ""
+      docker events $filters --format "{{{{.Time}}}} - {{{{.Action}}}} - {{{{.Actor.Attributes.name}}}} ({{{{.Actor.Attributes.image}}}})"
+
+  stack:health:
+    desc: "Vérifie la santé globale d'une stack Docker"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    vars:
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
+    summary: |
+      Affiche un rapport de santé complet d'une stack Docker Swarm.
+
+      Variables:
+      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
+
+      Exemple:
+      task docker:monitor:stack:health STACK_NAME=production
+    cmds:
+    - |
+      if ! docker stack ls --format "{{{{.Name}}}}" | grep -q "^{{.STACK_NAME}}$"; then
+        echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
+        echo "📋 Stacks disponibles :"
+        docker stack ls
+        exit 1
+      fi
+
+      echo "🏥 Rapport de santé de la stack '{{.STACK_NAME}}' :"
+      echo ""
+
+      echo "🔧 Services :"
+      docker stack services {{.STACK_NAME}} --format "table {{{{.Name}}}}\t{{{{.Replicas}}}}\t{{{{.Image}}}}"
+
+      echo ""
+      echo "📦 Tâches/Conteneurs :"
+      docker stack ps {{.STACK_NAME}} --format "table {{{{.Name}}}}\t{{{{.Node}}}}\t{{{{.DesiredState}}}}\t{{{{.CurrentState}}}}"
+
+      echo ""
+      echo "🔍 Analyse détaillée :"
+
+      # Compter les services en bonne santé
+      running_tasks=$(docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "{{{{.CurrentState}}}}" | grep -c "Running" || echo "0")
+      total_tasks=$(docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "{{{{.Name}}}}" | wc -l)
+
+      echo "  📊 Tâches en cours : $running_tasks/$total_tasks"
+
+      if [ "$running_tasks" -eq "$total_tasks" ] && [ "$total_tasks" -gt 0 ]; then
+        echo "  ✅ Tous les services sont opérationnels"
+      else
+        echo "  ⚠️  Certains services ne sont pas opérationnels"
+        echo "  🔍 Services problématiques :"
+        docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "table {{{{.Name}}}}\t{{{{.CurrentState}}}}" | grep -v "Running"
+      fi
+
+  wait:stack:ready:
+    desc: "Attend qu'une stack soit complètement déployée"
+    silent: true
+    vars:
+      STACK_NAME: '{{.STACK_NAME | default "taskfiles-stack"}}'
+      TIMEOUT: '{{.TIMEOUT | default "300"}}'
+      CHECK_INTERVAL: '{{.CHECK_INTERVAL | default "10"}}'
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Attend que tous les services d'une stack soient dans l'état "Running".
+
+      Variables:
+      - STACK_NAME: Nom de la stack (défaut: taskfiles-stack)
+      - TIMEOUT: Timeout en secondes (défaut: 300)
+      - CHECK_INTERVAL: Intervalle entre les vérifications (défaut: 10)
+
+      Exemple:
+      task docker:monitor:wait:stack:ready STACK_NAME=production TIMEOUT=600
+    cmds:
+    - |
+      if ! docker stack ls --format "{{{{.Name}}}}" | grep -q "^{{.STACK_NAME}}$"; then
+        echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
+        exit 1
+      fi
+
+      echo "⏳ Attente que la stack '{{.STACK_NAME}}' soit prête..."
+      echo "🕐 Timeout: {{.TIMEOUT}}s, Intervalle: {{.CHECK_INTERVAL}}s"
+      echo ""
+
+      start_time=$(date +%s)
+      timeout_time=$((start_time + {{.TIMEOUT}}))
+
+      while true; do
+        current_time=$(date +%s)
+        
+        if [ $current_time -gt $timeout_time ]; then
+          echo "❌ Timeout atteint ({{.TIMEOUT}}s). La stack n'est pas complètement prête."
+          echo "📊 État actuel :"
+          docker stack ps {{.STACK_NAME}} --format "table {{{{.Name}}}}\t{{{{.CurrentState}}}}\t{{{{.Error}}}}"
+          exit 1
+        fi
+        
+        # Compter les tâches en cours d'exécution
+        running_tasks=$(docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "{{{{.CurrentState}}}}" | grep -c "Running" || echo "0")
+        total_tasks=$(docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "{{{{.Name}}}}" | wc -l)
+        
+        elapsed=$((current_time - start_time))
+        echo "⏳ Progression: $running_tasks/$total_tasks tâches prêtes (${elapsed}s/{{.TIMEOUT}}s)"
+        
+        if [ "$running_tasks" -eq "$total_tasks" ] && [ "$total_tasks" -gt 0 ]; then
+          echo "✅ Stack '{{.STACK_NAME}}' complètement prête!"
+          break
+        fi
+        
+        # Afficher les services qui ne sont pas encore prêts
+        echo "🔍 Services en attente :"
+        docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "table {{{{.Name}}}}\t{{{{.CurrentState}}}}" | grep -v "Running" | head -3
+        echo ""
+        
+        sleep {{.CHECK_INTERVAL}}
+      done
+
+  events:filtered:
+    desc: "Surveille les événements Docker avec filtres avancés"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Surveille les événements Docker avec des filtres personnalisés.
+
+      Variables:
+      - STACK_NAME: Filtrer par stack (optionnel)
+      - EVENT_TYPES: Types d'événements (start,stop,die,health_status, etc.)
+      - SINCE: Depuis quand (ex: "2h", "2023-01-01T00:00:00")
+
+      Exemple:
+      task docker:monitor:events:filtered STACK_NAME=production EVENT_TYPES="start,stop,die"
+    vars:
+      EVENT_TYPES: '{{.EVENT_TYPES | default "start,stop,die,health_status"}}'
+      SINCE: '{{.SINCE | default "1h"}}'
+      STACK_NAME: '{{.STACK_NAME | default ""}}'
+    cmds:
+    - |
+      echo "📡 Surveillance des événements Docker..."
+      echo "🎯 Filtres :"
+      echo "   Types d'événements: {{.EVENT_TYPES}}"
+      echo "   Depuis: {{.SINCE}}"
+      if [ -n "{{.STACK_NAME}}" ]; then
+        echo "   Stack: {{.STACK_NAME}}"
+      fi
+      echo ""
+      echo "⏹️  Appuyez sur Ctrl+C pour arrêter"
+      echo ""
+
+      # Construire les filtres
+      filters="--since {{.SINCE}}"
+
+      # Ajouter les filtres d'événements
+      IFS=',' read -ra EVENT_ARRAY <<< "{{.EVENT_TYPES}}"
+      for event in "${EVENT_ARRAY[@]}"; do
+        event=$(echo "$event" | xargs)  # Trim whitespace
+        filters="$filters --filter event=$event"
+      done
+
+      # Ajouter le filtre de stack si spécifié
+      if [ -n "{{.STACK_NAME}}" ]; then
+        filters="$filters --filter label=com.docker.stack.namespace={{.STACK_NAME}}"
+      fi
+
+      echo "🔍 Commande: docker events $filters"
+      echo ""
+
+      docker events $filters --format "{{{{.Time}}}} [{{{{.Action}}}}] {{{{.Actor.Attributes.name}}}} ({{{{.Actor.Attributes.image}}}})"

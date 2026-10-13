@@ -1,0 +1,213 @@
+version: '3'
+
+# Taskfile pour les informations système
+
+tasks:
+  info:
+    desc: "Affiche les informations système"
+    silent: true
+    summary: |
+      Affiche les informations détaillées du système et des outils installés.
+    cmds:
+    - |
+      echo "💻 Informations système :"
+      echo ""
+      echo "🖥️  OS: $(uname -s) $(uname -r)"
+      echo "🏗️  Architecture: $(uname -m)"
+      echo "👤 Utilisateur: $(whoami)"
+      echo "📂 Répertoire: $(pwd)"
+      echo "🕒 Date: $(date)"
+      echo ""
+
+      echo "🛠️  Outils disponibles :"
+      for tool in docker node npm git task; do
+        if command -v "$tool" >/dev/null 2>&1; then
+          version=$("$tool" --version 2>/dev/null | head -n1 || echo "version inconnue")
+          echo "  ✅ $tool: $version"
+        else
+          echo "  ❌ $tool: non installé"
+        fi
+      done
+
+  resources:
+    desc: "Affiche l'utilisation des ressources système"
+    silent: true
+    summary: |
+      Affiche l'utilisation CPU, mémoire et disque.
+    cmds:
+    - |
+      echo "📊 Utilisation des ressources :"
+      echo ""
+
+      # CPU
+      if command -v top >/dev/null 2>&1; then
+        echo "🔥 CPU :"
+        top -l 1 -n 0 | grep "CPU usage" 2>/dev/null || \
+        top -bn1 | grep "Cpu(s)" | head -n1 | awk '{print "  Utilisation: " $2}' 2>/dev/null || \
+        echo "  Informations CPU non disponibles"
+      fi
+
+      echo ""
+
+      # Mémoire
+      echo "💾 Mémoire :"
+      if command -v free >/dev/null 2>&1; then
+        free -h | awk 'NR==2{printf "  Utilisée: %s/%s (%.2f%%)\n", $3,$2,$3*100/$2 }'
+      elif command -v vm_stat >/dev/null 2>&1; then
+        # macOS
+        vm_stat | head -n 10 | grep -E "(free|active|inactive|wired)" | awk '{print "  " $0}'
+      else
+        echo "  Informations mémoire non disponibles"
+      fi
+
+      echo ""
+
+      # Disque
+      echo "💽 Espace disque :"
+      if command -v df >/dev/null 2>&1; then
+        df -h / | awk 'NR==2{printf "  Racine: %s/%s (%s utilisé)\n", $3,$2,$5}'
+        df -h . | awk 'NR==2{printf "  Actuel: %s/%s (%s utilisé)\n", $3,$2,$5}'
+      else
+        echo "  Informations disque non disponibles"
+      fi
+
+  network:
+    desc: "Affiche les informations réseau"
+    silent: true
+    summary: |
+      Affiche les informations de connectivité réseau.
+    cmds:
+    - |
+      echo "🌐 Informations réseau :"
+      echo ""
+
+      # IP locale
+      echo "📍 Adresses IP :"
+      if command -v ip >/dev/null 2>&1; then
+        ip addr show | grep -E "inet " | grep -v "127.0.0.1" | awk '{print "  " $2}' | head -3
+      elif command -v ifconfig >/dev/null 2>&1; then
+        ifconfig | grep -E "inet " | grep -v "127.0.0.1" | awk '{print "  " $2}' | head -3
+      else
+        echo "  Commandes réseau non disponibles"
+      fi
+
+      echo ""
+
+      # Test de connectivité
+      echo "🔗 Test de connectivité :"
+      if ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+        echo "  ✅ Internet: Accessible"
+      else
+        echo "  ❌ Internet: Non accessible"
+      fi
+
+      if ping -c 1 github.com >/dev/null 2>&1; then
+        echo "  ✅ GitHub: Accessible"
+      else
+        echo "  ❌ GitHub: Non accessible"
+      fi
+
+  performance:
+    desc: "Affiche des métriques de performance"
+    silent: true
+    summary: |
+      Affiche des métriques de performance du système et du projet.
+    cmds:
+    - |
+      echo "⚡ Métriques de performance :"
+      echo ""
+
+      # Uptime
+      echo "⏱️  Temps de fonctionnement :"
+      if command -v uptime >/dev/null 2>&1; then
+        uptime | awk '{print "  " $0}'
+      else
+        echo "  Information non disponible"
+      fi
+
+      echo ""
+
+      # Charge système
+      echo "📈 Charge système :"
+      if [ -f /proc/loadavg ]; then
+        load=$(cat /proc/loadavg | awk '{print $1, $2, $3}')
+        echo "  Load average: $load"
+      elif command -v sysctl >/dev/null 2>&1; then
+        # macOS
+        sysctl -n vm.loadavg 2>/dev/null | awk '{print "  Load average: " $2, $3, $4}' || echo "  Load average non disponible"
+      else
+        echo "  Load average non disponible"
+      fi
+
+      echo ""
+
+      # Processus les plus consommateurs
+      echo "🔝 Top processus (CPU) :"
+      if command -v ps >/dev/null 2>&1; then
+        ps aux --sort=-%cpu 2>/dev/null | head -6 | tail -5 | awk '{printf "  %s: %.1f%%\n", $11, $3}' || \
+        ps aux | sort -rn -k3 | head -6 | tail -5 | awk '{printf "  %s: %.1f%%\n", $11, $3}' 2>/dev/null || \
+        echo "  Informations processus non disponibles"
+      fi
+
+  env:
+    desc: "Affiche les variables d'environnement importantes"
+    silent: true
+    summary: |
+      Affiche les variables d'environnement importantes pour le développement.
+    cmds:
+    - |
+      echo "🌍 Variables d'environnement :"
+      echo ""
+
+      # Variables importantes
+      important_vars=(
+        "PATH"
+        "HOME"
+        "USER"
+        "SHELL"
+        "EDITOR"
+        "LANG"
+        "NODE_ENV"
+        "DOCKER_HOST"
+        "PROJECT_NAME"
+        "ENVIRONMENT"
+      )
+
+      for var in "${important_vars[@]}"; do
+        value=$(printenv "$var" 2>/dev/null || echo "non définie")
+        if [ "$value" != "non définie" ]; then
+          # Tronquer les valeurs longues (comme PATH)
+          if [ ${#value} -gt 80 ]; then
+            short_value="${value:0:77}..."
+          else
+            short_value="$value"
+          fi
+          echo "  ✅ $var: $short_value"
+        else
+          echo "  ❌ $var: non définie"
+        fi
+      done
+
+  all:
+    desc: "Affiche toutes les informations système"
+    silent: true
+    summary: |
+      Affiche un rapport complet des informations système.
+    cmds:
+    - task: system:info
+    - echo ""
+    - echo "────────────────────────────────────────"
+    - echo ""
+    - task: system:resources
+    - echo ""
+    - echo "────────────────────────────────────────"
+    - echo ""
+    - task: system:network
+    - echo ""
+    - echo "────────────────────────────────────────"
+    - echo ""
+    - task: system:performance
+    - echo ""
+    - echo "────────────────────────────────────────"
+    - echo ""
+    - task: system:env

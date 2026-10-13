@@ -1,0 +1,174 @@
+version: '3'
+
+tasks:
+  create:
+    desc: "Crée une sauvegarde horodatée du projet"
+    silent: true
+    summary: |
+      Crée une archive tar.gz du projet excluant les dossiers temporaires.
+
+      Variables:
+      - BACKUP_DIR: Dossier de destination (défaut: ./backups)
+      - EXCLUDE_PATTERNS: Patterns à exclure (défaut: node_modules,.git,tmp)
+
+      Exemple:
+      task utils:backup:create
+      task utils:backup:create BACKUP_DIR=/tmp/backups
+    vars:
+      EXCLUDE_PATTERNS: '{{.EXCLUDE_PATTERNS | default "node_modules,.git,tmp,*.log,dist,build"}}'
+      BACKUP_FILE: '{{.BACKUP_FILE | default "backup.tar.gz"}}'
+      TIMESTAMP: '{{now | date "2006-01-02_15-04-05"}}'
+    cmds:
+    - |
+      echo "📦 Création d'une sauvegarde du projet..."
+      mkdir -p "{{.BACKUP_DIR}}"
+
+      project_name=$(basename "$(pwd)")
+      backup_file="{{.BACKUP_DIR}}/${project_name}_{{.TIMESTAMP}}.tar.gz"
+
+      echo "📁 Sauvegarde vers: $backup_file"
+
+      # Conversion des patterns d'exclusion en options tar
+      exclude_opts=""
+      IFS=',' read -ra patterns <<< "{{.EXCLUDE_PATTERNS}}"
+      for pattern in "${patterns[@]}"; do
+        exclude_opts="$exclude_opts --exclude=$pattern"
+      done
+
+      # Création de l'archive
+      if tar czf "$backup_file" $exclude_opts -C .. "$project_name"; then
+        size=$(ls -lh "$backup_file" | awk '{print $5}')
+        echo "✅ Sauvegarde créée avec succès ($size)"
+        echo "📄 Fichier: $backup_file"
+      else
+        echo "❌ Erreur lors de la création de la sauvegarde"
+        exit 1
+      fi
+
+  list:
+    desc: "Liste les sauvegardes disponibles"
+    silent: true
+    vars:
+      BACKUP_DIR: '{{.BACKUP_DIR | default "./backups"}}'
+    summary: |
+      Affiche la liste des sauvegardes dans le dossier de destination.
+
+      Variables:
+      - BACKUP_DIR: Dossier à vérifier (défaut: ./backups)
+    cmds:
+    - |
+      if [ ! -d "{{.BACKUP_DIR}}" ]; then
+        echo "❌ Dossier de sauvegarde '{{.BACKUP_DIR}}' introuvable"
+        exit 1
+      fi
+
+      echo "📋 Sauvegardes disponibles dans '{{.BACKUP_DIR}}' :"
+      echo ""
+
+      backups_found=0
+      for backup in "{{.BACKUP_DIR}}"/*.tar.gz; do
+        if [ -f "$backup" ]; then
+          size=$(ls -lh "$backup" | awk '{print $5}')
+          date=$(ls -l "$backup" | awk '{print $6, $7, $8}')
+          echo "  📦 $(basename "$backup") ($size) - $date"
+          backups_found=$((backups_found + 1))
+        fi
+      done
+
+      if [ $backups_found -eq 0 ]; then
+        echo "  Aucune sauvegarde trouvée"
+        echo ""
+        echo "💡 Créez une sauvegarde avec 'task utils:backup:create'"
+      else
+        echo ""
+        echo "📊 $backups_found sauvegarde(s) trouvée(s)"
+      fi
+
+  restore:
+    desc: "Restaure une sauvegarde spécifique"
+    silent: true
+    summary: |
+      Restaure une sauvegarde depuis une archive.
+
+      Variables:
+      - BACKUP_FILE: Fichier de sauvegarde à restaurer (requis)
+      - RESTORE_DIR: Dossier de restauration (défaut: ./)
+
+      Exemple:
+      task utils:backup:restore BACKUP_FILE=./backups/project_2023-10-03_14-30-45.tar.gz
+    vars:
+      RESTORE_DIR: '{{.RESTORE_DIR | default "./"}}'
+      BACKUP_FILE: '{{.BACKUP_FILE | default ""}}'
+    cmds:
+    - |
+      if [ -z "{{.BACKUP_FILE}}" ]; then
+        echo "❌ BACKUP_FILE est requis"
+        echo "📋 Sauvegardes disponibles :"
+        task utils:backup:list
+        exit 1
+      fi
+
+      if [ ! -f "{{.BACKUP_FILE}}" ]; then
+        echo "❌ Fichier de sauvegarde '{{.BACKUP_FILE}}' introuvable"
+        exit 1
+      fi
+
+      echo "📤 Restauration de la sauvegarde '{{.BACKUP_FILE}}'..."
+      echo "📁 Vers: {{.RESTORE_DIR}}"
+
+      # Demande de confirmation
+      read -p "Confirmer la restauration ? [y/N] " -n 1 -r
+      echo
+      if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "❌ Restauration annulée"
+        exit 1
+      fi
+
+      # Extraction
+      if tar xzf "{{.BACKUP_FILE}}" -C "{{.RESTORE_DIR}}"; then
+        echo "✅ Restauration terminée avec succès"
+      else
+        echo "❌ Erreur lors de la restauration"
+        exit 1
+      fi
+
+  clean:
+    desc: "Nettoie les anciennes sauvegardes"
+    silent: true
+    summary: |
+      Supprime les sauvegardes plus anciennes que le nombre de jours spécifié.
+
+      Variables:
+      - DAYS: Nombre de jours à conserver (défaut: 30)
+      - BACKUP_DIR: Dossier des sauvegardes (défaut: ./backups)
+    vars:
+      DAYS: '{{.DAYS | default "30"}}'
+      BACKUP_DIR: '{{.BACKUP_DIR | default "./backups"}}'
+    cmds:
+    - |
+      if [ ! -d "{{.BACKUP_DIR}}" ]; then
+        echo "❌ Dossier de sauvegarde '{{.BACKUP_DIR}}' introuvable"
+        exit 1
+      fi
+
+      echo "🧹 Nettoyage des sauvegardes de plus de {{.DAYS}} jours..."
+
+      cleaned=0
+      total_size=0
+
+      find "{{.BACKUP_DIR}}" -name "*.tar.gz" -type f -mtime +{{.DAYS}} | while read -r backup; do
+        if [ -f "$backup" ]; then
+          size=$(stat -f%z "$backup" 2>/dev/null || stat -c%s "$backup" 2>/dev/null || echo "0")
+          echo "🗑️  Suppression: $(basename "$backup")"
+          rm -f "$backup"
+          cleaned=$((cleaned + 1))
+          total_size=$((total_size + size))
+        fi
+      done
+
+      if [ $cleaned -eq 0 ]; then
+        echo "✅ Aucune sauvegarde ancienne trouvée"
+      else
+        echo "✅ $cleaned sauvegarde(s) supprimée(s)"
+        echo "💾 Espace libéré: $(numfmt --to=iec $total_size 2>/dev/null || echo "$total_size bytes")"
+      fi

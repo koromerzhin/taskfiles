@@ -1,0 +1,13 @@
+version: '3'
+
+# Taskfile pour les utilitaires généraux
+
+includes:
+  backup: ./backup/Taskfile.yml
+  clean: ./clean/Taskfile.yml
+  system: ./system/Taskfile.yml
+  file: ./file/Taskfile.yml
+
+vars:
+  BACKUP_DIR: '{{.BACKUP_DIR | default "./backups"}}'
+  LOG_LEVEL: '{{.LOG_LEVEL | default "INFO"}}'

@@ -1,0 +1,108 @@
+version: '3'
+
+tasks:
+  info:containers:running:
+    desc: "Liste les conteneurs en cours d'exécution avec leurs heures de démarrage"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Affiche tous les conteneurs en cours d'exécution avec leurs informations de démarrage.
+
+      Variables:
+      - IMAGE_NAME: Filtrer par image (optionnel)
+    vars:
+      IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
+    cmds:
+    - |
+      echo "📋 Conteneurs en cours d'exécution :"
+      echo ""
+
+      if [ -n "{{.IMAGE_NAME}}" ]; then
+        echo "🎯 Filtrage pour l'image: {{.IMAGE_NAME}}"
+        docker ps --filter ancestor={{.IMAGE_NAME}} --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}\t{{{{.CreatedAt}}}}"
+      else
+        docker ps --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}\t{{{{.CreatedAt}}}}"
+      fi
+
+  info:container:inspect:
+    desc: "Inspecte un conteneur pour obtenir ses informations de démarrage"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    vars:
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
+    summary: |
+      Affiche les informations détaillées d'un conteneur, incluant les heures de création et démarrage.
+
+      Variables:
+      - CONTAINER_NAME: Nom ou ID du conteneur (requis)
+
+      Exemple:
+      task docker:info:container:inspect CONTAINER_NAME=mon-conteneur
+    cmds:
+    - |
+      if [ -z "{{.CONTAINER_NAME}}" ]; then
+        echo "❌ CONTAINER_NAME est requis"
+        echo "📋 Conteneurs disponibles :"
+        docker ps --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
+        exit 1
+      fi
+
+      if ! docker ps -a --format "{{{{.Names}}}}" | grep -q "^{{.CONTAINER_NAME}}$"; then
+        echo "❌ Le conteneur '{{.CONTAINER_NAME}}' n'existe pas"
+        echo "📋 Conteneurs disponibles :"
+        docker ps -a --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
+        exit 1
+      fi
+
+      echo "🔍 Informations détaillées du conteneur '{{.CONTAINER_NAME}}' :"
+      echo ""
+
+      # Informations de base
+      echo "📊 Informations générales :"
+      docker inspect {{.CONTAINER_NAME}} --format "  Nom: {{{{.Name}}}}"
+      docker inspect {{.CONTAINER_NAME}} --format "  Image: {{{{.Config.Image}}}}"
+      docker inspect {{.CONTAINER_NAME}} --format "  État: {{{{.State.Status}}}}"
+      docker inspect {{.CONTAINER_NAME}} --format "  Créé le: {{{{.Created}}}}"
+      docker inspect {{.CONTAINER_NAME}} --format "  Démarré le: {{{{.State.StartedAt}}}}"
+      docker inspect {{.CONTAINER_NAME}} --format "  Fini le: {{{{.State.FinishedAt}}}}"
+
+      echo ""
+      echo "⏱️  Durée d'exécution :"
+      if docker inspect {{.CONTAINER_NAME}} --format "{{{{.State.Status}}}}" | grep -q "running"; then
+        started=$(docker inspect {{.CONTAINER_NAME}} --format "{{{{.State.StartedAt}}}}")
+        echo "  Démarré depuis: $started"
+        echo "  Statut: En cours d'exécution"
+      else
+        echo "  Statut: Arrêté"
+      fi
+
+  info:container:stats:
+    desc: "Affiche les statistiques en temps réel d'un conteneur"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    vars:
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
+    summary: |
+      Affiche les statistiques de performance d'un conteneur en temps réel.
+
+      Variables:
+      - CONTAINER_NAME: Nom du conteneur (optionnel, sinon tous)
+
+      Exemples:
+      task docker:info:container:stats
+      task docker:info:container:stats CONTAINER_NAME=mon-conteneur
+    cmds:
+    - |
+      if [ -n "{{.CONTAINER_NAME}}" ]; then
+        echo "📊 Statistiques en temps réel pour '{{.CONTAINER_NAME}}' :"
+        docker stats {{.CONTAINER_NAME}}
+      else
+        echo "📊 Statistiques en temps réel pour tous les conteneurs :"
+        docker stats
+      fi

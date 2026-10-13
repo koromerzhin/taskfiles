@@ -1,0 +1,118 @@
+version: '3'
+
+vars:
+  NETWORK_NAME: '{{.NETWORK_NAME | default "taskfiles-network"}}'
+  NETWORK_DRIVER: '{{.NETWORK_DRIVER | default "bridge"}}'
+
+tasks:
+  create:
+    desc: "Crée un réseau Docker"
+    silent: true
+    vars:
+      NETWORK_NAME: '{{.NETWORK_NAME | default "taskfiles-network"}}'
+      NETWORK_DRIVER: '{{.NETWORK_DRIVER | default "bridge"}}'
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Crée un nouveau réseau Docker avec les paramètres spécifiés.
+
+      Variables disponibles:
+      - NETWORK_NAME: Nom du réseau (défaut: taskfiles-network)
+      - NETWORK_DRIVER: Driver du réseau (défaut: bridge)
+
+      Exemples:
+      task docker:network:create
+      task docker:network:create NETWORK_NAME=mon-reseau
+      task docker:network:create NETWORK_NAME=mon-reseau NETWORK_DRIVER=overlay
+    cmds:
+    - |
+      DOCKER_FORMAT="table {{.Name}}"
+      if docker network ls --format "$DOCKER_FORMAT" | grep -q "^{{.NETWORK_NAME}}$"; then
+        echo "⚠️  Le réseau '{{.NETWORK_NAME}}' existe déjà"
+        docker network inspect {{.NETWORK_NAME}}
+      else
+        echo "🔧 Création du réseau Docker '{{.NETWORK_NAME}}' avec le driver '{{.NETWORK_DRIVER}}'..."
+        docker network create --driver {{.NETWORK_DRIVER}} {{.NETWORK_NAME}}
+        echo "✅ Réseau '{{.NETWORK_NAME}}' créé avec succès"
+      fi
+
+  list:
+    desc: "Liste tous les réseaux Docker"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: "Affiche la liste de tous les réseaux Docker disponibles"
+    cmds:
+    - echo "📋 Liste des réseaux Docker :"
+    - docker network ls
+
+  inspect:
+    desc: "Inspecte un réseau Docker spécifique"
+    silent: true
+    vars:
+      NETWORK_NAME: '{{.NETWORK_NAME | default "taskfiles-network"}}'
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Affiche les détails d'un réseau Docker.
+
+      Variables:
+      - NETWORK_NAME: Nom du réseau à inspecter (défaut: taskfiles-network)
+
+      Exemple:
+      task docker:network:inspect NETWORK_NAME=mon-reseau
+    cmds:
+    - |
+      DOCKER_FORMAT="table {{.Name}}"
+      if docker network ls --format "$DOCKER_FORMAT" | grep -q "^{{.NETWORK_NAME}}$"; then
+        echo "🔍 Inspection du réseau '{{.NETWORK_NAME}}' :"
+        docker network inspect {{.NETWORK_NAME}}
+      else
+        echo "❌ Le réseau '{{.NETWORK_NAME}}' n'existe pas"
+        echo "📋 Réseaux disponibles :"
+        docker network ls
+      fi
+
+  remove:
+    desc: "Supprime un réseau Docker"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: |
+      Supprime un réseau Docker existant.
+
+      Variables:
+      - NETWORK_NAME: Nom du réseau à supprimer (défaut: taskfiles-network)
+
+      Exemple:
+      task docker:network:remove NETWORK_NAME=mon-reseau
+    vars:
+      NETWORK_NAME: '{{.NETWORK_NAME | default "taskfiles-network"}}'
+    cmds:
+    - |
+      DOCKER_FORMAT="table {{.Name}}"
+      if docker network ls --format "$DOCKER_FORMAT" | grep -q "^{{.NETWORK_NAME}}$"; then
+        echo "🗑️  Suppression du réseau '{{.NETWORK_NAME}}'..."
+        docker network rm {{.NETWORK_NAME}}
+        echo "✅ Réseau '{{.NETWORK_NAME}}' supprimé avec succès"
+      else
+        echo "❌ Le réseau '{{.NETWORK_NAME}}' n'existe pas"
+        echo "📋 Réseaux disponibles :"
+        docker network ls
+      fi
+
+  prune:
+    desc: "Nettoie les réseaux Docker inutilisés"
+    silent: true
+    preconditions:
+    - sh: command -v docker
+      msg: "Docker n'est pas installé ou accessible"
+    summary: "Supprime tous les réseaux Docker qui ne sont pas utilisés par au moins un conteneur"
+    cmds:
+    - echo "🧹 Nettoyage des réseaux Docker inutilisés..."
+    - docker network prune -f
+    - echo "✅ Nettoyage terminé"
