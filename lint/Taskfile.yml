@@ -4,6 +4,7 @@ tasks:
     desc: "Tâches Docker liées au linting"
     vars:
       DOCKERCOMPOSEFILE: '{{.DOCKERCOMPOSEFILE | default "docker-compose.yml"}}'
+    interactive: false
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
