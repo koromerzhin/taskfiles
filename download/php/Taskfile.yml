@@ -113,8 +113,8 @@ tasks:
           continue
         fi
         
-        # Télécharger le fichier
-        if curl -L -s -o "$target_file" "$url"; then
+        # Télécharger le fichier (--fail : échec propre sur HTTP d'erreur au lieu d'un .phar corrompu)
+        if curl -fsSL -o "$target_file" "$url"; then
           # Vérifier que le téléchargement a réussi
           if [ -f "$target_file" ] && [ -s "$target_file" ]; then
             # Rendre le fichier exécutable
