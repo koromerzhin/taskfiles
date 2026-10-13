@@ -3,3 +3,13 @@
 # Dependencies
 node_modules/
 .env
+
+# Backups et secrets générés (env:backup, utils:backup:create)
+# Ne jamais committer : contiennent les vraies valeurs en clair
+.env.backup.*
+backups/
+*.tar.gz
+
+# Outils téléchargés (download:*) et artefacts générés
+tools/
+docker-images.txt

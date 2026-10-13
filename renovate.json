@@ -14,7 +14,7 @@
       "matchManagers": ["regex"],
       "matchFiles": [".nvmrc"],
       "matchPackageNames": ["node"],
-      "extractVersion": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$",
+      "extractVersion": "^v?(?<version>\\d+(?:\\.\\d+\\.\\d+)?)$",
     "depType": "engines",
       "versioning": "node",
       "enabled": true,
@@ -32,8 +32,9 @@
     {
       "fileMatch": ["^\\.nvmrc$"],
       "matchStrings": [
-        "^(?<depName>node)\\s*v?(?<currentValue>\\d+\\.\\d+\\.\\d+)$"
+        "^(?<currentValue>v?\\d+(?:\\.\\d+\\.\\d+)?)\\s*$"
       ],
+      "depNameTemplate": "node",
       "datasourceTemplate": "node"
     }
   ]
