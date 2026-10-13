@@ -68,8 +68,12 @@ tasks:
       Variables:
       - TEMP_PATTERNS: Patterns à supprimer (défaut: tmp,temp,*.tmp,*.temp,node_modules/.cache)
       - DRY_RUN: Mode simulation (défaut: false)
+
+      Note: dist/ et build/ sont volontairement exclus du défaut (artefacts
+      potentiellement non reconstruisibles) — passez TEMP_PATTERNS explicite
+      pour les inclure.
     vars:
-      TEMP_PATTERNS: '{{.TEMP_PATTERNS | default "tmp,temp,*.tmp,*.temp,node_modules/.cache,dist,build"}}'
+      TEMP_PATTERNS: '{{.TEMP_PATTERNS | default "tmp,temp,*.tmp,*.temp,node_modules/.cache"}}'
       DRY_RUN: '{{.DRY_RUN | default "false"}}'
     cmds:
     - |

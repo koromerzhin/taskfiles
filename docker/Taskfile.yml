@@ -34,13 +34,18 @@ tasks:
       CONTAINER_NAME: '{{.CONTAINER_NAME | default "labstag-php"}}'
       FILE_PATH: '{{.FILE_PATH | default "/var/www/html/.env"}}'
       DEST_PATH: '{{.DEST_PATH | default "./.env"}}'
+      FORCE: '{{.FORCE | default "false"}}'
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
     cmds:
     - |
-      # Garde-fou : DEST_PATH défaute vers ./.env — backup avant écrasement (défaut conservé, récupérable)
+      # Garde-fou : DEST_PATH défaute vers ./.env — écrasement refusé sans FORCE=true, backup avant écrasement
       if [ -f "{{.DEST_PATH}}" ]; then
+        if [ "{{.FORCE}}" != "true" ]; then
+          echo "❌ {{.DEST_PATH}} existe déjà → relancez avec FORCE=true (backup auto avant écrasement)"
+          exit 1
+        fi
         bak="{{.DEST_PATH}}.bak.$(date +%Y-%m-%d_%H-%M-%S)"
         echo "⚠️  {{.DEST_PATH}} existe déjà → backup vers $bak"
         cp -p "{{.DEST_PATH}}" "$bak"

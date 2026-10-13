@@ -27,6 +27,15 @@ vars:
   PHPSTAN_VERSION: '{{.PHPSTAN_VERSION | default "1.12.4"}}'
   PHPDOCUMENTOR_VERSION: '{{.PHPDOCUMENTOR_VERSION | default "3.5.3"}}'
   BEHAT_VERSION: '{{.BEHAT_VERSION | default "3.14.0"}}'
+  # Sommes SHA256 attendues — vides par défaut (vérification ignorée), à renseigner
+  # pour verrouiller la chaîne d'approvisionnement (ex. PHPSTAN_SHA256=abc123...)
+  PHPLOC_SHA256: '{{.PHPLOC_SHA256 | default ""}}'
+  PHP_CS_FIXER_SHA256: '{{.PHP_CS_FIXER_SHA256 | default ""}}'
+  PHPMD_SHA256: '{{.PHPMD_SHA256 | default ""}}'
+  PHP_CODESNIFFER_SHA256: '{{.PHP_CODESNIFFER_SHA256 | default ""}}'
+  PHPSTAN_SHA256: '{{.PHPSTAN_SHA256 | default ""}}'
+  PHPDOCUMENTOR_SHA256: '{{.PHPDOCUMENTOR_SHA256 | default ""}}'
+  BEHAT_SHA256: '{{.BEHAT_SHA256 | default ""}}'
 
 tasks:
   tools:
@@ -41,6 +50,9 @@ tasks:
       - Versions épinglées (surchargeables) : PHPLOC_VERSION, PHP_CS_FIXER_VERSION,
         PHPMD_VERSION, PHP_CODESNIFFER_VERSION, PHPSTAN_VERSION,
         PHPDOCUMENTOR_VERSION, BEHAT_VERSION
+      - Sommes SHA256 (optionnelles, vérifiées avant chmod +x si renseignées) :
+        PHPLOC_SHA256, PHP_CS_FIXER_SHA256, PHPMD_SHA256,
+        PHP_CODESNIFFER_SHA256, PHPSTAN_SHA256, PHPDOCUMENTOR_SHA256, BEHAT_SHA256
 
       Outils téléchargés:
       - phploc.phar (PHP Lines of Code)
@@ -129,6 +141,33 @@ tasks:
         if curl -fsSL -o "$target_file" "$url"; then
           # Vérifier que le téléchargement a réussi
           if [ -f "$target_file" ] && [ -s "$target_file" ]; then
+            # Vérification SHA256 avant chmod +x (si somme renseignée, sinon ignorée)
+            case "$tool" in
+              "phploc.phar") expected_sha="{{.PHPLOC_SHA256}}" ;;
+              "php-cs-fixer.phar") expected_sha="{{.PHP_CS_FIXER_SHA256}}" ;;
+              "phpmd.phar") expected_sha="{{.PHPMD_SHA256}}" ;;
+              "phpcbf.phar"|"phpcs.phar") expected_sha="{{.PHP_CODESNIFFER_SHA256}}" ;;
+              "phpstan.phar") expected_sha="{{.PHPSTAN_SHA256}}" ;;
+              "phpDocumentor.phar") expected_sha="{{.PHPDOCUMENTOR_SHA256}}" ;;
+              "behat.phar") expected_sha="{{.BEHAT_SHA256}}" ;;
+              *) expected_sha="" ;;
+            esac
+            if [ -n "$expected_sha" ]; then
+              if ! command -v sha256sum >/dev/null 2>&1; then
+                echo "❌ échec (sha256sum manquant pour vérifier $tool)"
+                rm -f "$target_file"
+                errors=$((errors + 1))
+                continue
+              fi
+              if echo "$expected_sha  $target_file" | sha256sum -c - >/dev/null 2>&1; then
+                echo -n "(sha256 ok) "
+              else
+                echo "❌ échec (SHA256 mismatch pour $tool)"
+                rm -f "$target_file"
+                errors=$((errors + 1))
+                continue
+              fi
+            fi
             # Rendre le fichier exécutable
             chmod +x "$target_file"
             echo "✅ téléchargé"

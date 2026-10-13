@@ -15,6 +15,7 @@ tasks:
       task utils:backup:create
       task utils:backup:create BACKUP_DIR=/tmp/backups
     vars:
+      BACKUP_DIR: '{{.BACKUP_DIR | default "./backups"}}'
       EXCLUDE_PATTERNS: '{{.EXCLUDE_PATTERNS | default "node_modules,.git,tmp,*.log,dist,build"}}'
       BACKUP_FILE: '{{.BACKUP_FILE | default "backup.tar.gz"}}'
       TIMESTAMP: '{{now | date "2006-01-02_15-04-05"}}'
