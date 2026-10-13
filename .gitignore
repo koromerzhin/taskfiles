@@ -3,3 +3,18 @@
 # Dependencies
 node_modules/
 .env
+
+# Backups et secrets générés (env:backup, utils:backup:create, apache:updateconfig, docker:getfile)
+# Ne jamais committer : contiennent les vraies valeurs en clair
+.env.backup.*
+backups/
+*.tar.gz
+*.bak
+*.bak.*
+
+# Outils téléchargés (download:*) et artefacts générés
+tools/
+docker-images.txt
+
+# Docs de travail locales (analyses, brouillons) — non versionnées
+analyse.md

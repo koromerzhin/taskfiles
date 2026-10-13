@@ -1,0 +1,18 @@
+self-hosted-runner:
+  # Labels of self-hosted runner in array of strings.
+  labels: []
+
+# Configuration variables in array of strings defined in your repository or
+# organization. `null` means disabling configuration variables check.
+# Empty array means no configuration variable is allowed.
+config-variables: null
+
+# ubuntu-26.04 est un vrai label GitHub-hosted (GA, actions/runner-images#14747),
+# absent de la base de labels connus d'actionlint (faux positif [runner-label]).
+# Volontairement PAS déclaré dans self-hosted-runner.labels : ce n'est pas un
+# runner privé. À retirer quand actionlint connaîtra le label (retester sans
+# ce bloc `ignore`). Tout autre label inconnu reste signalé.
+paths:
+  .github/workflows/**/*.yml:
+    ignore:
+      - 'label "ubuntu-26.04" is unknown'

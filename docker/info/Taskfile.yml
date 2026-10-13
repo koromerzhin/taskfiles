@@ -21,9 +21,9 @@ tasks:
 
       if [ -n "{{.IMAGE_NAME}}" ]; then
         echo "🎯 Filtrage pour l'image: {{.IMAGE_NAME}}"
-        docker ps --filter ancestor={{.IMAGE_NAME}} --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}\t{{{{.CreatedAt}}}}"
+        docker ps --filter ancestor={{.IMAGE_NAME}} --format "table {{`{{.Names}}`}}\t{{`{{.Image}}`}}\t{{`{{.Status}}`}}\t{{`{{.CreatedAt}}`}}"
       else
-        docker ps --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}\t{{{{.CreatedAt}}}}"
+        docker ps --format "table {{`{{.Names}}`}}\t{{`{{.Image}}`}}\t{{`{{.Status}}`}}\t{{`{{.CreatedAt}}`}}"
       fi
 
   info:container:inspect:
@@ -47,14 +47,14 @@ tasks:
       if [ -z "{{.CONTAINER_NAME}}" ]; then
         echo "❌ CONTAINER_NAME est requis"
         echo "📋 Conteneurs disponibles :"
-        docker ps --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
+        docker ps --format "table {{`{{.Names}}`}}\t{{`{{.Image}}`}}\t{{`{{.Status}}`}}"
         exit 1
       fi
 
-      if ! docker ps -a --format "{{{{.Names}}}}" | grep -q "^{{.CONTAINER_NAME}}$"; then
+      if ! docker ps -a --format "{{`{{.Names}}`}}" | grep -q "^{{.CONTAINER_NAME}}$"; then
         echo "❌ Le conteneur '{{.CONTAINER_NAME}}' n'existe pas"
         echo "📋 Conteneurs disponibles :"
-        docker ps -a --format "table {{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Status}}}}"
+        docker ps -a --format "table {{`{{.Names}}`}}\t{{`{{.Image}}`}}\t{{`{{.Status}}`}}"
         exit 1
       fi
 
@@ -63,17 +63,17 @@ tasks:
 
       # Informations de base
       echo "📊 Informations générales :"
-      docker inspect {{.CONTAINER_NAME}} --format "  Nom: {{{{.Name}}}}"
-      docker inspect {{.CONTAINER_NAME}} --format "  Image: {{{{.Config.Image}}}}"
-      docker inspect {{.CONTAINER_NAME}} --format "  État: {{{{.State.Status}}}}"
-      docker inspect {{.CONTAINER_NAME}} --format "  Créé le: {{{{.Created}}}}"
-      docker inspect {{.CONTAINER_NAME}} --format "  Démarré le: {{{{.State.StartedAt}}}}"
-      docker inspect {{.CONTAINER_NAME}} --format "  Fini le: {{{{.State.FinishedAt}}}}"
+      docker inspect {{.CONTAINER_NAME}} --format "  Nom: {{`{{.Name}}`}}"
+      docker inspect {{.CONTAINER_NAME}} --format "  Image: {{`{{.Config.Image}}`}}"
+      docker inspect {{.CONTAINER_NAME}} --format "  État: {{`{{.State.Status}}`}}"
+      docker inspect {{.CONTAINER_NAME}} --format "  Créé le: {{`{{.Created}}`}}"
+      docker inspect {{.CONTAINER_NAME}} --format "  Démarré le: {{`{{.State.StartedAt}}`}}"
+      docker inspect {{.CONTAINER_NAME}} --format "  Fini le: {{`{{.State.FinishedAt}}`}}"
 
       echo ""
       echo "⏱️  Durée d'exécution :"
-      if docker inspect {{.CONTAINER_NAME}} --format "{{{{.State.Status}}}}" | grep -q "running"; then
-        started=$(docker inspect {{.CONTAINER_NAME}} --format "{{{{.State.StartedAt}}}}")
+      if docker inspect {{.CONTAINER_NAME}} --format "{{`{{.State.Status}}`}}" | grep -q "running"; then
+        started=$(docker inspect {{.CONTAINER_NAME}} --format "{{`{{.State.StartedAt}}`}}")
         echo "  Démarré depuis: $started"
         echo "  Statut: En cours d'exécution"
       else

@@ -9,7 +9,12 @@ tasks:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
     cmds:
-    - docker compose -f {{.DOCKERCOMPOSEFILE}} config
+    - |
+      if [ ! -f "{{.DOCKERCOMPOSEFILE}}" ]; then
+        echo "⏭️  {{.DOCKERCOMPOSEFILE}} introuvable, vérification Docker ignorée (repo sans compose)"
+        exit 0
+      fi
+      docker compose -f {{.DOCKERCOMPOSEFILE}} config 1>/dev/null
 
   action:
     desc: "Linter tous les fichiers Action (.yml dans .github/workflows)"
@@ -17,14 +22,17 @@ tasks:
     - sh: command -v go
       msg: "go n'est pas installé. Veuillez l'installer"
     silent: true
+    vars:
+      ACTIONLINT_VERSION: '{{.ACTIONLINT_VERSION | default "v1.7.12"}}'
     cmds:
     - |
       set -euo pipefail
 
       if ! command -v actionlint >/dev/null 2>&1; then
-        echo "actionlint non trouvé, installation..."
-        go install github.com/rhysd/actionlint/cmd/actionlint@latest
-        export PATH="$PATH:$(go env GOPATH)/bin"
+        echo "actionlint non trouvé, installation {{.ACTIONLINT_VERSION}}..."
+        go install github.com/rhysd/actionlint/cmd/actionlint@{{.ACTIONLINT_VERSION}}
+        GOPATH_BIN="$(go env GOPATH)/bin"
+        export PATH="$PATH:$GOPATH_BIN"
       fi
 
       find .github/workflows -type f -name '*.yml' ! -path '*/node_modules/*' ! -path '*/vendor/*' -print | while IFS= read -r file; do
@@ -33,6 +41,62 @@ tasks:
       done
 
       echo "✅ Tous les fichiers Action ont été vérifiés"
+
+  shell:
+    desc: "Shellcheck tous les blocs shell embarqués dans les Taskfiles"
+    silent: true
+    summary: |
+      Extrait les cmds: de tous les Taskfile.yml (templates Task masqués)
+      puis shellcheck -s bash. Codes exclus car bruités par design avec des
+      valeurs rendues à l'exécution : SC2157/SC2050/SC2193 (comparaisons
+      "constantes" sur placeholders).
+
+      Variables:
+      - SHELLCHECK_VERSION: version épinglée auto-installée si absente (défaut: v0.11.0)
+      - TOOLS_DIR: dossier d'installation si shellcheck absent (défaut: ./tools/shell)
+    vars:
+      SHELLCHECK_VERSION: '{{.SHELLCHECK_VERSION | default "v0.11.0"}}'
+      TOOLS_DIR: '{{.TOOLS_DIR | default "./tools/shell"}}'
+    preconditions:
+    - sh: command -v python3
+      msg: "python3 est requis pour extraire les blocs shell"
+    - sh: python3 -c "import yaml"
+      msg: "PyYAML est requis (pip install pyyaml ou apt install python3-yaml)"
+    cmds:
+    - |
+      set -euo pipefail
+
+      ROOT="$(cd "{{.TASKFILE_DIR}}/.." && pwd)"
+
+      # Dossier d'outils (absolu tel quel, relatif basé sur la racine du projet)
+      if [[ "{{.TOOLS_DIR}}" == /* ]]; then
+        TOOLS_BIN="{{.TOOLS_DIR}}"
+      else
+        TOOLS_BIN="$ROOT/{{.TOOLS_DIR}}"
+      fi
+
+      # Binaire épinglé (auto-install si absent, Linux x86_64 uniquement)
+      if ! command -v shellcheck >/dev/null 2>&1; then
+        if [ -x "$TOOLS_BIN/shellcheck" ]; then
+          export PATH="$TOOLS_BIN:$PATH"
+        else
+          echo "shellcheck non trouvé, installation {{.SHELLCHECK_VERSION}}..."
+          mkdir -p "$TOOLS_BIN"
+          curl -fsSL "https://github.com/koalaman/shellcheck/releases/download/{{.SHELLCHECK_VERSION}}/shellcheck-{{.SHELLCHECK_VERSION}}.linux.x86_64.tar.xz" -o /tmp/shellcheck.tar.xz
+          tar -xJf /tmp/shellcheck.tar.xz -C /tmp
+          cp "/tmp/shellcheck-{{.SHELLCHECK_VERSION}}/shellcheck" "$TOOLS_BIN/shellcheck"
+          rm -rf /tmp/shellcheck.tar.xz "/tmp/shellcheck-{{.SHELLCHECK_VERSION}}"
+          export PATH="$TOOLS_BIN:$PATH"
+        fi
+      fi
+
+      echo "🔍 shellcheck $(shellcheck --version | head -n1)"
+
+      TMP_DIR="$(mktemp -d)"
+      trap 'rm -rf "$TMP_DIR"' EXIT
+      python3 "$ROOT/.github/scripts/extract-task-shell.py" --root "$ROOT" --out "$TMP_DIR"
+      shellcheck -s bash -S warning -e SC2157,SC2050,SC2193 "$TMP_DIR"/*.sh
+      echo "✅ Tous les blocs shell ont été vérifiés"
 
   yml:
     desc: "Linter tous les fichiers YAML (.yml, .yaml)"
@@ -77,6 +141,8 @@ tasks:
         FIND_EXPR+=( "(" -path "./$d" -prune ")" -o )
       done
 
+      # CHANGELOG.md exclu : fichier auto-généré par auto-changelog (release-it),
+      # le lint markdown y remonterait du bruit à chaque release.
       find . "${FIND_EXPR[@]}" -type f -name '*.md' ! -path '*/node_modules/*' ! -path '*/vendor/*' ! -name 'CHANGELOG.md' -print | while IFS= read -r file; do
         echo "Vérification de $file"
         npx markdownlint-cli "$file"

@@ -9,21 +9,6 @@ updates:
       - "dependencies"
       - "npm"
     open-pull-requests-limit: 10
-
-  # 2️⃣ Dépendances Docker (docker-compose récupère les images du registry)
-  - package-ecosystem: "docker"
-    directory: "/" # Dependabot va scanner docker-compose.yml
-    schedule:
-      interval: "weekly"
-    labels:
-      - "dependencies"
-      - "docker"
-
-  # 3️⃣ Projets PHP utilisant Composer
-  - package-ecosystem: "composer"
-    directory: "/" # dossier contenant composer.json
-    schedule:
-      interval: "weekly"
-    labels:
-      - "dependencies"
-      - "php"
+  # Note : écosystèmes `docker` et `composer` volontairement retirés —
+  # aucun docker-compose.yml ni composer.json à la racine, ils ne généraient que du bruit.
+  # Les réactiver quand les manifestes correspondants seront ajoutés.

@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
 version: '3'
 
 # Taskfile principal - Tâches globales et inclusions
@@ -39,13 +40,20 @@ tasks:
     cmds:
     - task: lint:yml
     - task: lint:md
+    - task: lint:shell
+    - task: lint:action
+    - task: lint:docker
 
   info:
     desc: "Affiche les informations du projet avec les variables d'environnement"
     silent: true
+    preconditions:
+    - sh: command -v jq
+      msg: "jq n'est pas installé (requis par 'task info' pour lire package.json)"
     cmds:
     - |
-      export PROJECT_VERSION=$(jq -r .version package.json)
+      PROJECT_VERSION=$(jq -r .version package.json)
+      export PROJECT_VERSION
       echo "🛠️  {{.PROJECT_NAME}} v$PROJECT_VERSION - Collection de Taskfiles"
       echo "📅 {{.TIMESTAMP}}"
       echo "🌍 Environnement: {{.ENVIRONMENT}}"
@@ -57,6 +65,9 @@ tasks:
       echo "  • nodejs   - Projets Node.js"
       echo "  • download - Téléchargement d'outils"
       echo "  • utils    - Utilitaires divers"
+      echo "  • apache   - Configuration Apache"
+      echo "  • lint     - Linting YAML/Markdown/Shell/Actions/Docker"
+      echo "  • help     - Aide détaillée"
 
   help:
     desc: "Affiche l'aide détaillée"
@@ -70,5 +81,15 @@ tasks:
     silent: true
     cmds:
     - echo "🔍 Validation du projet {{.PROJECT_NAME}}..."
+    - task: lint:all
     - task: env:validate
     - echo "✅ Validation terminée avec succès"
+
+  test:
+    desc: "Lance la suite de tests bats"
+    silent: true
+    preconditions:
+    - sh: command -v bats
+      msg: "bats n'est pas installé (apt install bats)"
+    cmds:
+    - bats test/

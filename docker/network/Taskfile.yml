@@ -27,7 +27,7 @@ tasks:
       task docker:network:create NETWORK_NAME=mon-reseau NETWORK_DRIVER=overlay
     cmds:
     - |
-      DOCKER_FORMAT="table {{.Name}}"
+      DOCKER_FORMAT="table {{`{{.Name}}`}}"
       if docker network ls --format "$DOCKER_FORMAT" | grep -q "^{{.NETWORK_NAME}}$"; then
         echo "⚠️  Le réseau '{{.NETWORK_NAME}}' existe déjà"
         docker network inspect {{.NETWORK_NAME}}
@@ -66,7 +66,7 @@ tasks:
       task docker:network:inspect NETWORK_NAME=mon-reseau
     cmds:
     - |
-      DOCKER_FORMAT="table {{.Name}}"
+      DOCKER_FORMAT="table {{`{{.Name}}`}}"
       if docker network ls --format "$DOCKER_FORMAT" | grep -q "^{{.NETWORK_NAME}}$"; then
         echo "🔍 Inspection du réseau '{{.NETWORK_NAME}}' :"
         docker network inspect {{.NETWORK_NAME}}
@@ -94,7 +94,7 @@ tasks:
       NETWORK_NAME: '{{.NETWORK_NAME | default "taskfiles-network"}}'
     cmds:
     - |
-      DOCKER_FORMAT="table {{.Name}}"
+      DOCKER_FORMAT="table {{`{{.Name}}`}}"
       if docker network ls --format "$DOCKER_FORMAT" | grep -q "^{{.NETWORK_NAME}}$"; then
         echo "🗑️  Suppression du réseau '{{.NETWORK_NAME}}'..."
         docker network rm {{.NETWORK_NAME}}

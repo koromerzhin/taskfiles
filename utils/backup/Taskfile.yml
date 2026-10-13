@@ -15,6 +15,7 @@ tasks:
       task utils:backup:create
       task utils:backup:create BACKUP_DIR=/tmp/backups
     vars:
+      BACKUP_DIR: '{{.BACKUP_DIR | default "./backups"}}'
       EXCLUDE_PATTERNS: '{{.EXCLUDE_PATTERNS | default "node_modules,.git,tmp,*.log,dist,build"}}'
       BACKUP_FILE: '{{.BACKUP_FILE | default "backup.tar.gz"}}'
       TIMESTAMP: '{{now | date "2006-01-02_15-04-05"}}'
@@ -99,6 +100,7 @@ tasks:
     vars:
       RESTORE_DIR: '{{.RESTORE_DIR | default "./"}}'
       BACKUP_FILE: '{{.BACKUP_FILE | default ""}}'
+      FORCE: '{{.FORCE | default "false"}}'
     cmds:
     - |
       if [ -z "{{.BACKUP_FILE}}" ]; then
@@ -116,12 +118,19 @@ tasks:
       echo "📤 Restauration de la sauvegarde '{{.BACKUP_FILE}}'..."
       echo "📁 Vers: {{.RESTORE_DIR}}"
 
-      # Demande de confirmation
-      read -p "Confirmer la restauration ? [y/N] " -n 1 -r
-      echo
-      if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "❌ Restauration annulée"
+      # Demande de confirmation (sauf FORCE=true ; échec rapide en non-interactif au lieu de hang)
+      if [ "{{.FORCE}}" = "true" ]; then
+        echo "⚠️  FORCE=true : restauration sans confirmation"
+      elif [ ! -t 0 ]; then
+        echo "❌ Entrée non-interactive détectée : relancez avec FORCE=true pour confirmer (ou en interactif)"
         exit 1
+      else
+        read -p "Confirmer la restauration ? [y/N] " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+          echo "❌ Restauration annulée"
+          exit 1
+        fi
       fi
 
       # Extraction
@@ -156,7 +165,8 @@ tasks:
       cleaned=0
       total_size=0
 
-      find "{{.BACKUP_DIR}}" -name "*.tar.gz" -type f -mtime +{{.DAYS}} | while read -r backup; do
+      # Note : boucle redirigée (pas de pipe) pour conserver cleaned/total_size (évite le subshell)
+      while IFS= read -r backup; do
         if [ -f "$backup" ]; then
           size=$(stat -f%z "$backup" 2>/dev/null || stat -c%s "$backup" 2>/dev/null || echo "0")
           echo "🗑️  Suppression: $(basename "$backup")"
@@ -164,7 +174,7 @@ tasks:
           cleaned=$((cleaned + 1))
           total_size=$((total_size + size))
         fi
-      done
+      done < <(find "{{.BACKUP_DIR}}" -name "*.tar.gz" -type f -mtime +{{.DAYS}})
 
       if [ $cleaned -eq 0 ]; then
         echo "✅ Aucune sauvegarde ancienne trouvée"

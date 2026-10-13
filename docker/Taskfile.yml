@@ -18,24 +18,70 @@ tasks:
   create:
     desc: "Créer et démarrer un conteneur Docker"
     silent: true
+    summary: |
+      Crée un conteneur Docker (sans le démarrer, `docker create`).
+
+      Variables requises (défauts neutres, pas de valeur personnelle) :
+      - CONTAINER_NAME: nom du conteneur à créer
+      - IMAGE_NAME: image à utiliser (ex. koromerzhin/php:8.4.13-apache-symfony)
+
+      Exemple:
+      task docker:create CONTAINER_NAME=labstag-php IMAGE_NAME=koromerzhin/php:8.4.13-apache-symfony
     vars:
-      CONTAINER_NAME: '{{.CONTAINER_NAME | default "labstag-php"}}'
-      IMAGE_NAME: '{{.IMAGE_NAME | default "koromerzhin/php:8.4.13-apache-symfony"}}'
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
+      IMAGE_NAME: '{{.IMAGE_NAME | default ""}}'
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    - sh: '[ -n "{{.CONTAINER_NAME}}" ]'
+      msg: "CONTAINER_NAME est requis (défauts neutres, ex. CONTAINER_NAME=mon-conteneur)"
+    - sh: '[ -n "{{.IMAGE_NAME}}" ]'
+      msg: "IMAGE_NAME est requis (défauts neutres, ex. IMAGE_NAME=nginx:latest)"
     cmds:
     - docker create --name {{.CONTAINER_NAME}} {{.IMAGE_NAME}}
 
   getfile:
     desc: "Récupérer un fichier depuis un conteneur Docker"
     silent: true
+    summary: |
+      Copie un fichier depuis un conteneur vers l'hôte.
+
+      Variables:
+      - CONTAINER_NAME: conteneur source (requis, pas de défaut personnel)
+      - FILE_PATH: chemin dans le conteneur (défaut: /var/www/html/.env)
+      - DEST_PATH: destination hôte (défaut: ./<container>.env — jamais ./.env
+        par défaut pour éviter d'écraser la config locale)
+      - FORCE: requis à true pour écraser une destination existante (backup auto)
+
+      Exemples:
+      task docker:getfile CONTAINER_NAME=mon-conteneur
+      task docker:getfile CONTAINER_NAME=mon-conteneur DEST_PATH=./.env FORCE=true
     vars:
-      CONTAINER_NAME: '{{.CONTAINER_NAME | default "labstag-php"}}'
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default ""}}'
       FILE_PATH: '{{.FILE_PATH | default "/var/www/html/.env"}}'
-      DEST_PATH: '{{.DEST_PATH | default "./.env"}}'
+      DEST_PATH: '{{.DEST_PATH | default ""}}'
+      FORCE: '{{.FORCE | default "false"}}'
     preconditions:
     - sh: command -v docker
       msg: "Docker n'est pas installé ou accessible"
+    - sh: '[ -n "{{.CONTAINER_NAME}}" ]'
+      msg: "CONTAINER_NAME est requis (ex. CONTAINER_NAME=mon-conteneur)"
     cmds:
-    - docker cp {{.CONTAINER_NAME}}:{{.FILE_PATH}} {{.DEST_PATH}}
+    - |
+      # Destination : explicite si fournie, sinon ./<container>.env (jamais ./.env par défaut)
+      dest="{{.DEST_PATH}}"
+      if [ -z "$dest" ]; then
+        dest="./{{.CONTAINER_NAME}}.env"
+        echo "ℹ️  DEST_PATH non fourni → $dest"
+      fi
+      # Garde-fou : écrasement refusé sans FORCE=true, backup avant écrasement
+      if [ -f "$dest" ]; then
+        if [ "{{.FORCE}}" != "true" ]; then
+          echo "❌ $dest existe déjà → relancez avec FORCE=true (backup auto avant écrasement)"
+          exit 1
+        fi
+        bak="$dest.bak.$(date +%Y-%m-%d_%H-%M-%S)"
+        echo "⚠️  $dest existe déjà → backup vers $bak"
+        cp -p "$dest" "$bak"
+      fi
+      docker cp {{.CONTAINER_NAME}}:{{.FILE_PATH}} "$dest"

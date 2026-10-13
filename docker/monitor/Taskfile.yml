@@ -47,7 +47,7 @@ tasks:
       fi
 
       echo ""
-      docker events $filters --format "{{{{.Time}}}} - {{{{.Action}}}} - {{{{.Actor.Attributes.name}}}} ({{{{.Actor.Attributes.image}}}})"
+      docker events $filters --format "{{`{{.Time}}`}} - {{`{{.Action}}`}} - {{`{{.Actor.Attributes.name}}`}} ({{`{{.Actor.Attributes.image}}`}})"
 
   stack:health:
     desc: "Vérifie la santé globale d'une stack Docker"
@@ -67,7 +67,7 @@ tasks:
       task docker:monitor:stack:health STACK_NAME=production
     cmds:
     - |
-      if ! docker stack ls --format "{{{{.Name}}}}" | grep -q "^{{.STACK_NAME}}$"; then
+      if ! docker stack ls --format "{{`{{.Name}}`}}" | grep -q "^{{.STACK_NAME}}$"; then
         echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
         echo "📋 Stacks disponibles :"
         docker stack ls
@@ -78,18 +78,18 @@ tasks:
       echo ""
 
       echo "🔧 Services :"
-      docker stack services {{.STACK_NAME}} --format "table {{{{.Name}}}}\t{{{{.Replicas}}}}\t{{{{.Image}}}}"
+      docker stack services {{.STACK_NAME}} --format "table {{`{{.Name}}`}}\t{{`{{.Replicas}}`}}\t{{`{{.Image}}`}}"
 
       echo ""
       echo "📦 Tâches/Conteneurs :"
-      docker stack ps {{.STACK_NAME}} --format "table {{{{.Name}}}}\t{{{{.Node}}}}\t{{{{.DesiredState}}}}\t{{{{.CurrentState}}}}"
+      docker stack ps {{.STACK_NAME}} --format "table {{`{{.Name}}`}}\t{{`{{.Node}}`}}\t{{`{{.DesiredState}}`}}\t{{`{{.CurrentState}}`}}"
 
       echo ""
       echo "🔍 Analyse détaillée :"
 
       # Compter les services en bonne santé
-      running_tasks=$(docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "{{{{.CurrentState}}}}" | grep -c "Running" || echo "0")
-      total_tasks=$(docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "{{{{.Name}}}}" | wc -l)
+      running_tasks=$(docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "{{`{{.CurrentState}}`}}" | grep -c "Running" || echo "0")
+      total_tasks=$(docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "{{`{{.Name}}`}}" | wc -l)
 
       echo "  📊 Tâches en cours : $running_tasks/$total_tasks"
 
@@ -98,7 +98,7 @@ tasks:
       else
         echo "  ⚠️  Certains services ne sont pas opérationnels"
         echo "  🔍 Services problématiques :"
-        docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "table {{{{.Name}}}}\t{{{{.CurrentState}}}}" | grep -v "Running"
+        docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "table {{`{{.Name}}`}}\t{{`{{.CurrentState}}`}}" | grep -v "Running"
       fi
 
   wait:stack:ready:
@@ -123,7 +123,7 @@ tasks:
       task docker:monitor:wait:stack:ready STACK_NAME=production TIMEOUT=600
     cmds:
     - |
-      if ! docker stack ls --format "{{{{.Name}}}}" | grep -q "^{{.STACK_NAME}}$"; then
+      if ! docker stack ls --format "{{`{{.Name}}`}}" | grep -q "^{{.STACK_NAME}}$"; then
         echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
         exit 1
       fi
@@ -141,13 +141,13 @@ tasks:
         if [ $current_time -gt $timeout_time ]; then
           echo "❌ Timeout atteint ({{.TIMEOUT}}s). La stack n'est pas complètement prête."
           echo "📊 État actuel :"
-          docker stack ps {{.STACK_NAME}} --format "table {{{{.Name}}}}\t{{{{.CurrentState}}}}\t{{{{.Error}}}}"
+          docker stack ps {{.STACK_NAME}} --format "table {{`{{.Name}}`}}\t{{`{{.CurrentState}}`}}\t{{`{{.Error}}`}}"
           exit 1
         fi
         
         # Compter les tâches en cours d'exécution
-        running_tasks=$(docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "{{{{.CurrentState}}}}" | grep -c "Running" || echo "0")
-        total_tasks=$(docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "{{{{.Name}}}}" | wc -l)
+        running_tasks=$(docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "{{`{{.CurrentState}}`}}" | grep -c "Running" || echo "0")
+        total_tasks=$(docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "{{`{{.Name}}`}}" | wc -l)
         
         elapsed=$((current_time - start_time))
         echo "⏳ Progression: $running_tasks/$total_tasks tâches prêtes (${elapsed}s/{{.TIMEOUT}}s)"
@@ -159,7 +159,7 @@ tasks:
         
         # Afficher les services qui ne sont pas encore prêts
         echo "🔍 Services en attente :"
-        docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "table {{{{.Name}}}}\t{{{{.CurrentState}}}}" | grep -v "Running" | head -3
+        docker stack ps {{.STACK_NAME}} --filter "desired-state=running" --format "table {{`{{.Name}}`}}\t{{`{{.CurrentState}}`}}" | grep -v "Running" | head -3
         echo ""
         
         sleep {{.CHECK_INTERVAL}}
@@ -216,4 +216,4 @@ tasks:
       echo "🔍 Commande: docker events $filters"
       echo ""
 
-      docker events $filters --format "{{{{.Time}}}} [{{{{.Action}}}}] {{{{.Actor.Attributes.name}}}} ({{{{.Actor.Attributes.image}}}})"
+      docker events $filters --format "{{`{{.Time}}`}} [{{`{{.Action}}`}}] {{`{{.Actor.Attributes.name}}`}} ({{`{{.Actor.Attributes.image}}`}})"

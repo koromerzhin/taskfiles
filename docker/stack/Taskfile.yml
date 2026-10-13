@@ -202,7 +202,7 @@ tasks:
       if [ -z "{{.SERVICE_NAME}}" ]; then
         echo "❌ SERVICE_NAME est requis"
         echo "🔧 Services disponibles pour la stack '{{.STACK_NAME}}' :"
-        docker stack services {{.STACK_NAME}} --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+        docker stack services {{.STACK_NAME}} --format "table {{`{{.Name}}`}}\t{{`{{.Replicas}}`}}\t{{`{{.Image}}`}}"
         exit 1
       fi
 
@@ -295,14 +295,14 @@ tasks:
           echo "❌ Timeout atteint ({{.TIMEOUT}}s). Tous les éléments ne sont pas encore prêts."
           if [ -n "{{.CONTAINERS}}" ]; then
             echo "📋 État final des conteneurs :"
-            docker ps --filter "name={{.STACK_NAME}}" --format "table {{.Names}}\t{{.Status}}"
+            docker ps --filter "name={{.STACK_NAME}}" --format "table {{`{{.Names}}`}}\t{{`{{.Status}}`}}"
           fi
           if [ -n "{{.SERVICES}}" ]; then
             echo "📋 État final des services :"
             for service in $services_clean; do
               service=$(echo "$service" | xargs)
               service_full_name="{{.STACK_NAME}}_${service}"
-              replicas=$(docker service ls --filter "name=$service_full_name" --format "{{.Replicas}}" 2>/dev/null || echo "non trouvé")
+              replicas=$(docker service ls --filter "name=$service_full_name" --format "{{`{{.Replicas}}`}}" 2>/dev/null || echo "non trouvé")
               echo "   $service: $replicas"
             done
           fi
@@ -320,7 +320,7 @@ tasks:
           for container in $containers_clean; do
             container=$(echo "$container" | xargs)
             # Vérifie uniquement le conteneur explicitement demandé
-            if docker ps --filter "name={{.STACK_NAME}}_${container}" --format "{{.Names}}" | grep -wq "{{.STACK_NAME}}_${container}"; then
+            if docker ps --filter "name={{.STACK_NAME}}_${container}" --format "{{`{{.Names}}`}}" | grep -wq "{{.STACK_NAME}}_${container}"; then
               ready_containers="$ready_containers $container"
             else
               missing_containers="$missing_containers $container"
@@ -334,7 +334,7 @@ tasks:
           for service in $services_clean; do
             service=$(echo "$service" | xargs)
             service_full_name="{{.STACK_NAME}}_${service}"
-            if docker service ls --filter "name=$service_full_name" --format "{{.Replicas}}" | grep -q "1/1\|[2-9]/[2-9]"; then
+            if docker service ls --filter "name=$service_full_name" --format "{{`{{.Replicas}}`}}" | grep -q "1/1\|[2-9]/[2-9]"; then
               ready_services="$ready_services $service"
             else
               pending_services="$pending_services $service"
@@ -368,7 +368,7 @@ tasks:
             echo "📋 Conteneurs actifs :"
             for container in $containers_clean; do
               container=$(echo "$container" | xargs)
-              status=$(docker ps --filter "name={{.STACK_NAME}}_${container}" --format "{{.Status}}")
+              status=$(docker ps --filter "name={{.STACK_NAME}}_${container}" --format "{{`{{.Status}}`}}")
               echo "  ✅ ${container} - $status"
             done
           fi
@@ -415,12 +415,12 @@ tasks:
         echo "❌ SERVICE_NAME est requis"
         echo ""
         echo "🔧 Services disponibles dans la stack '{{.STACK_NAME}}' :"
-        if docker stack ls --format "{{.Name}}" | grep -q "^{{.STACK_NAME}}$"; then
-          docker stack services {{.STACK_NAME}} --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+        if docker stack ls --format "{{`{{.Name}}`}}" | grep -q "^{{.STACK_NAME}}$"; then
+          docker stack services {{.STACK_NAME}} --format "table {{`{{.Name}}`}}\t{{`{{.Replicas}}`}}\t{{`{{.Image}}`}}"
         else
           echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
           echo "📋 Stacks disponibles :"
-          docker stack ls --format "{{.Name}}"
+          docker stack ls --format "{{`{{.Name}}`}}"
         fi
         exit 1
       fi
@@ -516,12 +516,12 @@ tasks:
         echo "❌ SERVICE_NAME est requis"
         echo ""
         echo "🔧 Services disponibles dans la stack '{{.STACK_NAME}}' :"
-        if docker stack ls --format "{{.Name}}" | grep -q "^{{.STACK_NAME}}$"; then
-          docker stack services {{.STACK_NAME}} --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+        if docker stack ls --format "{{`{{.Name}}`}}" | grep -q "^{{.STACK_NAME}}$"; then
+          docker stack services {{.STACK_NAME}} --format "table {{`{{.Name}}`}}\t{{`{{.Replicas}}`}}\t{{`{{.Image}}`}}"
         else
           echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
           echo "📋 Stacks disponibles :"
-          docker stack ls --format "{{.Name}}"
+          docker stack ls --format "{{`{{.Name}}`}}"
         fi
         exit 1
       fi
@@ -671,7 +671,7 @@ tasks:
         echo ""
         echo "🔧 Services disponibles dans la stack '{{.STACK_NAME}}' :"
         if docker stack ls | awk 'NR>1 {print $1}' | grep -q "^{{.STACK_NAME}}$"; then
-          docker stack services {{.STACK_NAME}} --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+          docker stack services {{.STACK_NAME}} --format "table {{`{{.Name}}`}}\t{{`{{.Replicas}}`}}\t{{`{{.Image}}`}}"
         else
           echo "❌ La stack '{{.STACK_NAME}}' n'existe pas"
         fi
@@ -695,28 +695,28 @@ tasks:
       service_full_name="{{.STACK_NAME}}_{{.SERVICE_NAME}}"
 
       # Vérifier que le service existe
-      if ! docker service ls --filter "name=$service_full_name" --format "{{.Name}}" | grep -q "^$service_full_name$"; then
+      if ! docker service ls --filter "name=$service_full_name" --format "{{`{{.Name}}`}}" | grep -q "^$service_full_name$"; then
         echo "❌ Le service '$service_full_name' n'existe pas"
         echo ""
         echo "🔧 Services disponibles dans la stack '{{.STACK_NAME}}' :"
-        docker stack services {{.STACK_NAME}} --format "table {{.Name}}\t{{.Replicas}}\t{{.Image}}"
+        docker stack services {{.STACK_NAME}} --format "table {{`{{.Name}}`}}\t{{`{{.Replicas}}`}}\t{{`{{.Image}}`}}"
         exit 1
       fi
 
       # Trouver le conteneur actif pour ce service
       echo "🔍 Recherche d'un conteneur actif pour le service '$service_full_name'..."
 
-      container_id=$(docker ps --filter "label=com.docker.swarm.service.name=$service_full_name" --filter "status={{.TASK_FILTER}}" --format "{{.ID}}" | head -n 1)
+      container_id=$(docker ps --filter "label=com.docker.swarm.service.name=$service_full_name" --filter "status={{.TASK_FILTER}}" --format "{{`{{.ID}}`}}" | head -n 1)
 
       if [ -z "$container_id" ]; then
         echo "❌ Aucun conteneur {{.TASK_FILTER}} trouvé pour le service '$service_full_name'"
         echo ""
         echo "📋 État des tâches pour ce service :"
-        docker service ps $service_full_name --format "table {{.Name}}\t{{.Node}}\t{{.DesiredState}}\t{{.CurrentState}}"
+        docker service ps $service_full_name --format "table {{`{{.Name}}`}}\t{{`{{.Node}}`}}\t{{`{{.DesiredState}}`}}\t{{`{{.CurrentState}}`}}"
         exit 1
       fi
 
-      container_name=$(docker ps --filter "id=$container_id" --format "{{.Names}}")
+      container_name=$(docker ps --filter "id=$container_id" --format "{{`{{.Names}}`}}")
       echo "✅ Conteneur trouvé : $container_name ($container_id)"
 
       # Vérifier que le script existe dans le conteneur

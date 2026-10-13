@@ -1,14 +1,21 @@
 {
   "name": "@koromerzhin/taskfiles",
-  "version": "1.7.0",
+  "version": "2.0.0",
   "description": "Une collection de scripts Taskfiles réutilisables pour automatiser les tâches courantes dans différents types de projets de développement.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/koromerzhin/taskfiles.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "taskfile",
+    "task",
+    "automation",
+    "docker",
+    "devops"
+  ],
+  "author": "koromerzhin",
+  "license": "MIT",
+  "private": true,
   "bugs": {
     "url": "https://github.com/koromerzhin/taskfiles/issues"
   },
@@ -17,8 +24,9 @@
     "release": "release-it"
   },
   "devDependencies": {
-    "markdownlint-cli": "^0.44.0",
-    "release-it": "^17.11.0",
-    "yaml-lint": "^1.7.0"
+    "auto-changelog": "2.7.*",
+    "markdownlint-cli": "0.49.*",
+    "release-it": "21.1.*",
+    "yaml-lint": "1.7.*"
   }
 }
