@@ -1,4 +1,3 @@
-# yaml-language-server: $schema=https://taskfile.dev/schema.json
 version: 3
 
 tasks:
@@ -11,31 +10,25 @@ tasks:
       SERVERNAME: '{{.SERVERNAME | default "localhost"}}'
     silent: true
     cmds:
+
     - |
-      set -eu
-      # Backup avant écriture (restaure l'état pré-run en cas de problème)
-      for f in "{{.DEFAULT_FILE}}" "{{.APACHE_CONF_FILE}}"; do
-        if [ ! -f "$f" ]; then
-          echo "❌ Fichier introuvable: $f"
-          exit 1
-        fi
-        cp -p "$f" "$f.bak"
+      set -e
+      for file in "{{.DEFAULT_FILE}}" "{{.APACHE_CONF_FILE}}"; do
+        sed -ri \
+          -e 's|\$\{APACHE_DOCUMENT_ROOT\}|{{.APACHE_DOCUMENT_ROOT}}|g' \
+          -e 's|^\s*DocumentRoot\s+.*$|DocumentRoot {{.APACHE_DOCUMENT_ROOT}}|g' \
+          -e 's|^\s*#?\s*ServerName\s+.*$|ServerName {{.SERVERNAME}}|g' \
+          "$file"
       done
-      # Échappement pour le membre droit d'une substitution sed avec délimiteur | (&, |, \ cassent sinon)
-      esc_root=$(printf '%s' '{{.APACHE_DOCUMENT_ROOT}}' | sed -e 's/[&|\\]/\\&/g')
-      esc_server=$(printf '%s' '{{.SERVERNAME}}' | sed -e 's/[&|\\]/\\&/g')
-      sed -ri -e "s|\\$\\{APACHE_DOCUMENT_ROOT\\}|$esc_root|g" "{{.DEFAULT_FILE}}"
-      sed -ri -e "s|#ServerName www.example.com|ServerName $esc_server|g" "{{.DEFAULT_FILE}}"
-      sed -ri -e "s|\\$\\{APACHE_DOCUMENT_ROOT\\}|$esc_root|g" "{{.APACHE_CONF_FILE}}"
-      # Idempotence : n'ajoute le bloc ServerName qu'une fois (2e run = no-op)
-      if ! grep -q "^[[:space:]]*ServerName " "{{.APACHE_CONF_FILE}}"; then
+
+      if grep -qE '^\s*ServerName\s+' "{{.APACHE_CONF_FILE}}"; then
+        sed -ri 's|^\s*ServerName\s+.*$|ServerName {{.SERVERNAME}}|g' "{{.APACHE_CONF_FILE}}"
+      else
         sed -i '/^# Global configuration/a\
         #\
         # ServerName: Set the servers fully qualified domain name globally\
         # This suppresses the warning about not being able to reliably determine\
         # the servers fully qualified domain name\
         #\
-        ServerName '"$esc_server"'' "{{.APACHE_CONF_FILE}}"
-      else
-        echo "ℹ️  ServerName déjà présent dans {{.APACHE_CONF_FILE}}, ajout ignoré"
+        ServerName {{.SERVERNAME}}' "{{.APACHE_CONF_FILE}}"
       fi
