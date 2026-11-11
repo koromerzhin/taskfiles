@@ -13,7 +13,19 @@ tasks:
 
     - |
       set -e
+      # Mémoriser si apache2.conf contient déjà une directive ServerName (commentée ou non)
+      # AVANT la transformation, sinon la branche d'ajout ne serait jamais atteinte.
+      if grep -qE '^\s*#?\s*ServerName\s+' "{{.APACHE_CONF_FILE}}"; then
+        HAS_SERVERNAME=1
+      else
+        HAS_SERVERNAME=0
+      fi
+
       for file in "{{.DEFAULT_FILE}}" "{{.APACHE_CONF_FILE}}"; do
+        if [ ! -f "$file" ]; then
+          echo "Fichier introuvable: $file" >&2
+          exit 1
+        fi
         sed -ri \
           -e 's|\$\{APACHE_DOCUMENT_ROOT\}|{{.APACHE_DOCUMENT_ROOT}}|g' \
           -e 's|^\s*DocumentRoot\s+.*$|DocumentRoot {{.APACHE_DOCUMENT_ROOT}}|g' \
@@ -21,9 +33,8 @@ tasks:
           "$file"
       done
 
-      if grep -qE '^\s*ServerName\s+' "{{.APACHE_CONF_FILE}}"; then
-        sed -ri 's|^\s*ServerName\s+.*$|ServerName {{.SERVERNAME}}|g' "{{.APACHE_CONF_FILE}}"
-      else
+      # Ajouter ServerName dans apache2.conf uniquement s'il n'existait pas déjà
+      if [ "$HAS_SERVERNAME" = "0" ]; then
         sed -i '/^# Global configuration/a\
         #\
         # ServerName: Set the servers fully qualified domain name globally\
