@@ -129,9 +129,20 @@ tasks:
     silent: true
     vars:
       IGNORE_DIR: '{{.IGNORE_DIR | default ""}}'
+      FILE: '{{.FILE | default ""}}'
+      CONFIG: '{{.CONFIG | default ".markdownlint.json"}}'
     cmds:
     - |
       set -euo pipefail
+
+      CONFIG="{{.CONFIG}}"
+
+      if [ -n "{{.FILE}}" ]; then
+        echo "Vérification de {{.FILE}}"
+        npx markdownlint-cli --config "$CONFIG" "{{.FILE}}"
+        echo "✅ Vérification terminée pour {{.FILE}}"
+        exit 0
+      fi
 
       IGNORE_DIR="{{.IGNORE_DIR | default ""}}"
       DIRS="${IGNORE_DIR//,/ }"
@@ -142,11 +153,9 @@ tasks:
         FIND_EXPR+=( "(" -path "./$d" -prune ")" -o )
       done
 
-      # CHANGELOG.md exclu : fichier auto-généré par auto-changelog (release-it),
-      # le lint markdown y remonterait du bruit à chaque release.
-      find . "${FIND_EXPR[@]}" -type f -name '*.md' ! -path '*/node_modules/*' ! -path '*/vendor/*' ! -name 'CHANGELOG.md' -print | while IFS= read -r file; do
+      find . "${FIND_EXPR[@]}" -type f -name '*.md' ! -path '*/node_modules/*' ! -path '*/vendor/*' -print | while IFS= read -r file; do
         echo "Vérification de $file"
-        npx markdownlint-cli --config .markdownlint.json "$file"
+        npx markdownlint-cli --config "$CONFIG" "$file"
       done
 
       echo "✅ Tous les fichiers Markdown ont été vérifiés"
