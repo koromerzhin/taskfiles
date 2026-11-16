@@ -1,4 +1,3 @@
-# yaml-language-server: $schema=https://taskfile.dev/schema.json
 version: '3'
 
 tasks:
@@ -16,6 +15,38 @@ tasks:
     - |
       echo "🐳 Initialisation de Docker Swarm..."
 
+      # Si Swarm est déjà actif sur ce nœud, on ne réinitialise pas.
+      if docker info --format '{{`{{.Swarm.LocalNodeState}}`}}' 2>/dev/null | grep -qx active; then
+        echo "ℹ️  Docker Swarm est déjà initialisé sur ce nœud"
+        exit 0
+      fi
+
+      # Détection automatique de l'adresse IP système à annoncer si non
+      # fournie ou si la valeur fournie n'est pas une adresse du système.
+      detect_system_ip() {
+        ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.*src \([0-9.]*\).*/\1/p' | head -n 1
+      }
+
+      is_system_ip() {
+        [ -n "$1" ] && ip -4 addr show 2>/dev/null | grep -q "inet $1/"
+      }
+
+      SWARM_ADVERTISE_ADDR="{{.SWARM_ADVERTISE_ADDR}}"
+      if [ -z "$SWARM_ADVERTISE_ADDR" ]; then
+        SWARM_ADVERTISE_ADDR="$(detect_system_ip)"
+        echo "📡 Adresse d'annonce auto-détectée: $SWARM_ADVERTISE_ADDR"
+      elif ! is_system_ip "$SWARM_ADVERTISE_ADDR"; then
+        detected="$(detect_system_ip)"
+        if [ -n "$detected" ]; then
+          echo "⚠️  L'adresse d'annonce '{{.SWARM_ADVERTISE_ADDR}}' n'est pas une adresse système"
+          echo "📡 Utilisation de l'adresse auto-détectée: $detected"
+          SWARM_ADVERTISE_ADDR="$detected"
+        else
+          echo "⚠️  L'adresse d'annonce '{{.SWARM_ADVERTISE_ADDR}}' n'est pas une adresse système et aucune IP n'a pu être détectée"
+          SWARM_ADVERTISE_ADDR=""
+        fi
+      fi
+
       # Construction par liste d'args (pas d'eval : chaque valeur reste un
       # argument unique, même avec espaces ou métacaractères)
       set -- docker swarm init
@@ -26,16 +57,21 @@ tasks:
         echo "📋 Pool d'adresses par défaut: {{.SWARM_DEFAULT_ADDR_POOL}}"
       fi
 
-      # Ajouter advertise-addr si spécifié
-      if [ -n "{{.SWARM_ADVERTISE_ADDR}}" ]; then
-        set -- "$@" --advertise-addr "{{.SWARM_ADVERTISE_ADDR}}"
-        echo "📡 Adresse d'annonce: {{.SWARM_ADVERTISE_ADDR}}"
+      # Ajouter advertise-addr si une adresse valide est disponible
+      if [ -n "$SWARM_ADVERTISE_ADDR" ]; then
+        set -- "$@" --advertise-addr "$SWARM_ADVERTISE_ADDR"
+        echo "📡 Adresse d'annonce: $SWARM_ADVERTISE_ADDR"
       fi
 
-      # Ajouter listen-addr si spécifié
+      # Ajouter listen-addr si spécifié, sinon écouter sur toutes les interfaces
+      # pour éviter l'erreur "must specify a listening address" lorsque
+      # l'adresse annoncée ne peut pas être résolue.
       if [ -n "{{.SWARM_LISTEN_ADDR}}" ]; then
         set -- "$@" --listen-addr "{{.SWARM_LISTEN_ADDR}}"
         echo "👂 Adresse d'écoute: {{.SWARM_LISTEN_ADDR}}"
+      else
+        set -- "$@" --listen-addr "0.0.0.0:2377"
+        echo "👂 Adresse d'écoute: 0.0.0.0:2377"
       fi
 
       echo "🚀 Exécution: $*"
@@ -62,12 +98,26 @@ tasks:
       SWARM_ADVERTISE_ADDR: '{{.SWARM_ADVERTISE_ADDR | default ""}}'
     cmds:
     - |
-      # --advertise-addr omis quand vide (docker refuse un flag vide) ; pas
-      # d'eval, chaque valeur reste un argument unique
-      set -- docker swarm init --default-addr-pool {{.SWARM_DEFAULT_ADDR_POOL}}
-      if [ -n "{{.SWARM_ADVERTISE_ADDR}}" ]; then
-        set -- "$@" --advertise-addr "{{.SWARM_ADVERTISE_ADDR}}"
+      detect_system_ip() {
+        ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.*src \([0-9.]*\).*/\1/p' | head -n 1
+      }
+      is_system_ip() {
+        [ -n "$1" ] && ip -4 addr show 2>/dev/null | grep -q "inet $1/"
+      }
+
+      SWARM_ADVERTISE_ADDR="{{.SWARM_ADVERTISE_ADDR}}"
+      if [ -z "$SWARM_ADVERTISE_ADDR" ]; then
+        SWARM_ADVERTISE_ADDR="$(detect_system_ip)"
+      elif ! is_system_ip "$SWARM_ADVERTISE_ADDR"; then
+        detected="$(detect_system_ip)"
+        [ -n "$detected" ] && SWARM_ADVERTISE_ADDR="$detected" || SWARM_ADVERTISE_ADDR=""
       fi
+
+      set -- docker swarm init --default-addr-pool {{.SWARM_DEFAULT_ADDR_POOL}}
+      if [ -n "$SWARM_ADVERTISE_ADDR" ]; then
+        set -- "$@" --advertise-addr "$SWARM_ADVERTISE_ADDR"
+      fi
+      set -- "$@" --listen-addr "0.0.0.0:2377"
       "$@"
 
   status:
