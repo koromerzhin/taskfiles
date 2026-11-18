@@ -202,7 +202,7 @@ tasks:
     cmds:
     - |
       set -e
-      files=$(ls $COMPOSE_GLOB 2>/dev/null || true)
+      files=$(ls {{.COMPOSE_GLOB}} 2>/dev/null || true)
       if [ -z "$files" ]; then
         echo "❌ Aucun fichier correspondant à '$COMPOSE_GLOB'"
         exit 1
