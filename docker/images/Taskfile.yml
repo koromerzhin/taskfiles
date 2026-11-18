@@ -177,3 +177,67 @@ tasks:
           fi
         fi
       done <<< "$images"
+
+  updates:
+    desc: "Vérifie si les images des compose sont à jour sur Docker Hub"
+    silent: true
+    preconditions:
+    - sh: command -v curl
+      msg: "curl n'est pas installé"
+    - sh: command -v jq
+      msg: "jq n'est pas installé"
+    vars:
+      COMPOSE_GLOB: '{{.COMPOSE_GLOB | default "docker-compose*.yml"}}'
+    summary: |
+      Interroge l'API Docker Hub pour chaque image référencée dans les fichiers
+      docker-compose correspondant au motif COMPOSE_GLOB et compare le tag utilisé
+      avec les tags les plus récents.
+
+      Variables:
+      - COMPOSE_GLOB: Motif des fichiers docker-compose (défaut: docker-compose*.yml)
+
+      Exemples:
+      task docker:images:updates
+      task docker:images:updates COMPOSE_GLOB="docker-compose*.yml"
+    cmds:
+    - |
+      set -e
+      files=$(ls $COMPOSE_GLOB 2>/dev/null || true)
+      if [ -z "$files" ]; then
+        echo "❌ Aucun fichier correspondant à '$COMPOSE_GLOB'"
+        exit 1
+      fi
+      for COMPOSE_FILE in $files; do
+        echo ""
+        echo "===== $COMPOSE_FILE ====="
+        images=$(grep -E "^[[:space:]]*image:" "$COMPOSE_FILE" | sed 's/.*image:[[:space:]]*//' | sed 's/["'\'']*//g' | sort -u)
+        echo "$images" | while IFS= read -r img; do
+          [ -z "$img" ] && continue
+          if echo "$img" | grep -q "@"; then img="${img%%@*}"; fi
+          base="${img##*/}"
+          if echo "$base" | grep -q ":"; then
+            repo="${img%:*}"; tag="${img##*:}"
+          else
+            repo="$img"; tag="latest"
+          fi
+          echo ""
+          echo "  image        : $img"
+          echo "  repo         : $repo"
+          echo "  tag actuel   : $tag"
+          info=$(curl -s "https://hub.docker.com/v2/repositories/${repo}/tags/${tag}/" 2>/dev/null)
+          updated=$(echo "$info" | jq -r '.last_updated // empty')
+          if [ -n "$updated" ]; then
+            echo "  tag existe   : oui"
+            echo "  dernier push : $updated"
+          else
+            echo "  tag existe   : NON / erreur"
+          fi
+          echo "  tags recents (Docker Hub) :"
+          curl -s "https://hub.docker.com/v2/repositories/${repo}/tags?page_size=8&ordering=last_updated" 2>/dev/null \
+            | jq -r '.results[].name' 2>/dev/null | while IFS= read -r t; do
+                marker=""
+                [ "$t" = "$tag" ] && marker="  <-- ACTUEL"
+                echo "     - $t$marker"
+              done
+        done
+      done
