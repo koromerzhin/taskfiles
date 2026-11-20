@@ -36,7 +36,7 @@ jobs:
       # (v1.7.12, voir lint/Taskfile.yml). Même logique côté npm : plages
       # assumées (package.json), `npm ci` + lock pour la reproductibilité.
       - name: Setup Go (requis par lint:action)
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: stable
 
